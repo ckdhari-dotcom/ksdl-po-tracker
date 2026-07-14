@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#124e45" />
+    <title>KSDL PO Tracker</title>
+    <link rel="stylesheet" href="styles.css" />
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+  </head>
+  <body>
+    <section id="loginScreen" class="login-screen hidden">
+      <form id="loginForm" class="login-card">
+        <span class="eyebrow">KSDL DISTRIBUTION</span>
+        <h1>PO Tracker</h1>
+        <p>Enter your access PIN to continue.</p>
+        <label>Access PIN<input id="pinInput" type="password" inputmode="numeric" required autofocus /></label>
+        <p id="loginError" class="error" aria-live="polite"></p>
+        <button>Sign in</button>
+      </form>
+    </section>
+
+    <main id="app" class="app-shell">
+      <header class="topbar">
+        <div><span class="eyebrow">KSDL DISTRIBUTION</span><h1>Purchase Order Tracker</h1></div>
+        <div class="top-actions">
+          <span id="connectionStatus" class="connection-status">Local data</span>
+          <button id="newPoBtn" class="primary">+ New PO</button>
+        </div>
+      </header>
+
+      <section class="summary-grid" aria-label="Dashboard summary">
+        <article><span>Total POs</span><strong id="totalCount">0</strong><small id="totalValue">₹0</small></article>
+        <article><span>Pending</span><strong id="pendingCount">0</strong><small>Received &amp; Scheduled</small></article>
+        <article><span>In transit</span><strong id="transitCount">0</strong><small>On the road</small></article>
+        <article><span>Delivered</span><strong id="deliveredCount">0</strong><small id="deliveredValue">₹0 value</small></article>
+        <article class="attention"><span>Needs attention</span><strong id="attentionCount">0</strong><small>Open for 3+ days</small></article>
+      </section>
+
+      <section class="toolbar">
+        <label class="search"><span>⌕</span><input id="searchInput" placeholder="Search PO, customer, invoice or transporter" /></label>
+        <select id="statusFilter" aria-label="Filter by status"><option value="">All statuses</option></select>
+        <select id="customerFilter" aria-label="Filter by customer"><option value="">All customers</option></select>
+        <div class="toolbar-actions">
+          <button id="importBtn">Import Excel</button><input id="importFile" type="file" accept=".xlsx,.xls,.csv" hidden />
+          <button id="exportBtn">Export Excel</button>
+        </div>
+      </section>
+
+      <section class="table-card">
+        <div class="table-title"><div><h2>All purchase orders</h2><p id="resultCount">0 records</p></div><button id="clearFilters" class="text-btn">Clear filters</button></div>
+        <div class="table-wrap"><table><thead><tr>
+          <th>PO / Customer</th><th>PO Date</th><th>Status</th><th>Delivery</th><th>Value</th><th>Invoice</th><th>Transport</th><th>Assigned</th><th>Age</th><th></th>
+        </tr></thead><tbody id="poTableBody"></tbody></table></div>
+        <div id="emptyState" class="empty-state hidden"><h3>No purchase orders found</h3><p>Add your first PO, or import your existing Excel file.</p><button id="emptyNewBtn" class="primary">+ Add PO</button></div>
+      </section>
+      <p class="footnote">PO Age = today minus PO received date. Delay = actual delivery date minus PO date.</p>
+    </main>
+
+    <dialog id="poDialog"><form id="poForm" method="dialog">
+      <div class="modal-header"><div><span class="eyebrow">PURCHASE ORDER</span><h2 id="formTitle">Add PO</h2></div><button type="button" id="closeDialog" class="icon-btn" aria-label="Close">×</button></div>
+      <input id="recordId" type="hidden" />
+      <div class="form-grid">
+        <label>Customer name*<input name="customerName" required placeholder="e.g. DMart" /></label>
+        <label>PO number*<input name="poNumber" required placeholder="e.g. DM-45678" /></label>
+        <label>PO date*<input name="poDate" type="date" required /></label>
+        <label>PO received date*<input name="poReceivedDate" type="date" required /></label>
+        <label>Delivery date<input name="deliveryDate" type="date" /></label>
+        <label>Delivery status*<select name="status" required></select></label>
+        <label>PO value (₹)<input name="poValue" type="number" min="0" step="0.01" placeholder="0" /></label>
+        <label>Invoice number<input name="invoiceNumber" /></label>
+        <label>Invoice date<input name="invoiceDate" type="date" /></label>
+        <label>Transporter<input name="transporter" placeholder="e.g. Local Tempo" /></label>
+        <label>Transport amount (₹)<input name="transportAmount" type="number" min="0" step="0.01" placeholder="0" /></label>
+        <label>LR / tracking number<input name="trackingNumber" /></label>
+        <label>Assigned to<input name="assignedTo" placeholder="e.g. Supply Agent" /></label>
+        <label class="span-2">Remarks<textarea name="remarks" rows="3" placeholder="Any delivery or order note"></textarea></label>
+      </div>
+      <div class="modal-actions"><button type="button" id="deleteBtn" class="danger hidden">Delete</button><span></span><button type="button" id="cancelBtn">Cancel</button><button class="primary">Save PO</button></div>
+    </form></dialog>
+    <div id="toast" class="toast" role="status"></div>
+    <script src="config.js"></script><script src="app.js"></script>
+  </body>
+</html>
