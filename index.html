@@ -41,6 +41,9 @@
         <label class="search"><span>⌕</span><input id="searchInput" placeholder="Search PO, customer, invoice or transporter" /></label>
         <select id="statusFilter" aria-label="Filter by status"><option value="">All statuses</option></select>
         <select id="customerFilter" aria-label="Filter by customer"><option value="">All customers</option></select>
+        <select id="dateFieldFilter" aria-label="Choose filter date"><option value="poDate">PO date</option><option value="deliveryDate">Delivery date</option></select>
+        <label class="date-filter">From<input id="dateFrom" type="date" aria-label="From date" /></label>
+        <label class="date-filter">To<input id="dateTo" type="date" aria-label="To date" /></label>
         <div class="toolbar-actions">
           <button id="importBtn">Import Excel</button><input id="importFile" type="file" accept=".xlsx,.xls,.csv" hidden />
           <button id="exportBtn">Export Excel</button>
@@ -67,6 +70,7 @@
         <label>PO received date*<input name="poReceivedDate" type="date" required /></label>
         <label>Delivery date<input name="deliveryDate" type="date" /></label>
         <label>Delivery status*<select name="status" required></select></label>
+        <label class="span-2">Delivery note <small>PDF, JPG or PNG. Uploading a note marks this PO as Delivered.</small><input name="deliveryNote" type="file" accept="application/pdf,image/jpeg,image/png" /></label>
         <label>PO value (₹)<input name="poValue" type="number" min="0" step="0.01" placeholder="0" /></label>
         <label>Invoice number<input name="invoiceNumber" /></label>
         <label>Invoice date<input name="invoiceDate" type="date" /></label>
