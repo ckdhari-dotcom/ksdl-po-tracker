@@ -13,18 +13,21 @@
       <form id="loginForm" class="login-card">
         <span class="eyebrow">KSDL DISTRIBUTION</span>
         <h1>PO Tracker</h1>
-        <p>Enter your access PIN to continue.</p>
-        <label>Access PIN<input id="pinInput" type="password" inputmode="numeric" required autofocus /></label>
+        <p>Sign in with your authorised business email.</p>
+        <label>Email<input id="emailInput" type="email" autocomplete="username" required autofocus /></label>
+        <label>Password<input id="passwordInput" type="password" autocomplete="current-password" required /></label>
         <p id="loginError" class="error" aria-live="polite"></p>
         <button>Sign in</button>
       </form>
     </section>
 
-    <main id="app" class="app-shell">
+    <main id="app" class="app-shell hidden">
       <header class="topbar">
         <div><span class="eyebrow">KSDL DISTRIBUTION</span><h1>Purchase Order Tracker</h1></div>
         <div class="top-actions">
           <span id="connectionStatus" class="connection-status">Local data</span>
+          <span id="signedInAs" class="connection-status"></span>
+          <button id="signOutBtn" class="text-btn" type="button">Sign out</button>
           <button id="newPoBtn" class="primary">+ New PO</button>
         </div>
       </header>
