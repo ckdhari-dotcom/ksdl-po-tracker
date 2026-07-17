@@ -1,0 +1,50 @@
+/* Small-screen filter improvements for KSDL PO Tracker. */
+.custom-date-filters {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.date-filter {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.date-filter input {
+  display: block;
+  min-width: 135px;
+  margin-top: 2px;
+}
+
+@media (max-width: 580px) {
+  .toolbar {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 9px;
+  }
+
+  .toolbar .search,
+  .toolbar .custom-date-filters,
+  .toolbar .toolbar-actions {
+    grid-column: 1 / -1;
+  }
+
+  .toolbar select {
+    max-width: none;
+  }
+
+  .custom-date-filters {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+
+  .custom-date-filters select {
+    grid-column: 1 / -1;
+  }
+
+  .date-filter input {
+    min-width: 0;
+  }
+}

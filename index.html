@@ -6,6 +6,7 @@
     <meta name="theme-color" content="#124e45" />
     <title>KSDL PO Tracker</title>
     <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="mobile-filters.css" />
     <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
   </head>
   <body>
@@ -44,9 +45,17 @@
         <label class="search"><span>⌕</span><input id="searchInput" placeholder="Search PO, customer, invoice or transporter" /></label>
         <select id="statusFilter" aria-label="Filter by status"><option value="">All statuses</option></select>
         <select id="customerFilter" aria-label="Filter by customer"><option value="">All customers</option></select>
-        <select id="dateFieldFilter" aria-label="Choose filter date"><option value="poDate">PO date</option><option value="deliveryDate">Delivery date</option></select>
-        <label class="date-filter">From<input id="dateFrom" type="date" aria-label="From date" /></label>
-        <label class="date-filter">To<input id="dateTo" type="date" aria-label="To date" /></label>
+        <select id="dateRangeFilter" aria-label="Filter by date range">
+          <option value="">All dates</option>
+          <option value="1m">Last 1 month</option>
+          <option value="2m">Last 2 months</option>
+          <option value="custom">Custom dates</option>
+        </select>
+        <div id="customDateFilters" class="custom-date-filters hidden">
+          <select id="dateFieldFilter" aria-label="Choose filter date"><option value="poDate">PO date</option><option value="deliveryDate">Delivery date</option></select>
+          <label class="date-filter">From<input id="dateFrom" type="date" aria-label="From date" /></label>
+          <label class="date-filter">To<input id="dateTo" type="date" aria-label="To date" /></label>
+        </div>
         <div class="toolbar-actions">
           <button id="importBtn">Import Excel</button><input id="importFile" type="file" accept=".xlsx,.xls,.csv" hidden />
           <button id="exportBtn">Export Excel</button>
