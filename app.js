@@ -23,13 +23,14 @@ function secureLoginRequired() { return CONFIG.REQUIRE_SECURE_LOGIN === true; }
 function supabaseHeaders() { const token = secureLoginRequired() ? authSession?.access_token : CONFIG.SUPABASE_ANON_KEY; if (!token) throw new Error('Please sign in again'); return {apikey: CONFIG.SUPABASE_ANON_KEY, Authorization: `Bearer ${token}`, 'Content-Type': 'application/json', Prefer: 'return=representation'}; }
 async function signIn(email, password) { const response = await fetch(`${CONFIG.SUPABASE_URL}/auth/v1/token?grant_type=password`, {method: 'POST', headers: {apikey: CONFIG.SUPABASE_ANON_KEY, 'Content-Type': 'application/json'}, body: JSON.stringify({email, password})}); const data = await response.json(); if (!response.ok) throw new Error(data.error_description || data.msg || 'Could not sign in'); authSession = data; sessionStorage.setItem('ksdl-po-tracker-session', JSON.stringify(data)); }
 function signOut() { authSession = null; sessionStorage.removeItem('ksdl-po-tracker-session'); clearInterval(refreshTimer); location.reload(); }
-function toCloud(record) { return {id: record.id, customer_name: record.customerName, po_number: record.poNumber, po_date: record.poDate || null, po_received_date: record.poReceivedDate || null, delivery_date: record.deliveryDate || null, status: record.status, po_value: Number(record.poValue || 0), invoice_number: record.invoiceNumber || null, invoice_date: record.invoiceDate || null, transporter: record.transporter || null, transport_amount: Number(record.transportAmount || 0), tracking_number: record.trackingNumber || null, assigned_to: record.assignedTo || null, remarks: record.remarks || null, delivery_note_url: record.deliveryNoteUrl || null, updated_at: new Date().toISOString()}; }
-function fromCloud(record) { return {id: record.id, customerName: record.customer_name, poNumber: record.po_number, poDate: record.po_date, poReceivedDate: record.po_received_date, deliveryDate: record.delivery_date, status: record.status, poValue: record.po_value, invoiceNumber: record.invoice_number, invoiceDate: record.invoice_date, transporter: record.transporter, transportAmount: record.transport_amount, trackingNumber: record.tracking_number, assignedTo: record.assigned_to, remarks: record.remarks, deliveryNoteUrl: record.delivery_note_url}; }
+function toCloud(record) { return {id: record.id, customer_name: record.customerName, po_number: record.poNumber, po_date: record.poDate || null, po_received_date: record.poReceivedDate || null, delivery_date: record.deliveryDate || null, status: record.status, po_value: Number(record.poValue || 0), invoice_number: record.invoiceNumber || null, invoice_date: record.invoiceDate || null, transporter: record.transporter || null, transport_amount: Number(record.transportAmount || 0), tracking_number: record.trackingNumber || null, assigned_to: record.assignedTo || null, remarks: record.remarks || null, po_attachment_url: record.poAttachmentUrl || null, delivery_note_url: record.deliveryNoteUrl || null, updated_at: new Date().toISOString()}; }
+function fromCloud(record) { return {id: record.id, customerName: record.customer_name, poNumber: record.po_number, poDate: record.po_date, poReceivedDate: record.po_received_date, deliveryDate: record.delivery_date, status: record.status, poValue: record.po_value, invoiceNumber: record.invoice_number, invoiceDate: record.invoice_date, transporter: record.transporter, transportAmount: record.transport_amount, trackingNumber: record.tracking_number, assignedTo: record.assigned_to, remarks: record.remarks, poAttachmentUrl: record.po_attachment_url, deliveryNoteUrl: record.delivery_note_url}; }
 async function loadRecords() { if (!cloudEnabled()) { records = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'); render(); return; } try { const response = await fetch(`${CONFIG.SUPABASE_URL}/rest/v1/purchase_orders?select=*&order=po_received_date.desc`, {headers: supabaseHeaders()}); if (!response.ok) throw new Error('Could not load cloud data'); records = (await response.json()).map(fromCloud); await resolveDeliveryNoteLinks_(); $('connectionStatus').textContent = 'Cloud synced'; } catch (error) { records = []; $('connectionStatus').textContent = 'Cloud unavailable'; toast(error.message || 'Could not load cloud data'); } render(); }
 async function persist(record, deleting = false, isNew = false) { if (!cloudEnabled()) { localStorage.setItem(STORAGE_KEY, JSON.stringify(records)); return; } const endpoint = isNew ? `${CONFIG.SUPABASE_URL}/rest/v1/purchase_orders` : `${CONFIG.SUPABASE_URL}/rest/v1/purchase_orders?id=eq.${encodeURIComponent(record.id)}`; const response = await fetch(endpoint, {method: deleting ? 'DELETE' : isNew ? 'POST' : 'PATCH', headers: supabaseHeaders(), body: deleting ? undefined : JSON.stringify(toCloud(record))}); if (!response.ok) throw new Error('Cloud save failed'); }
 function deliveryNotePath_(value) { const marker = `/storage/v1/object/public/${NOTE_BUCKET}/`; const text = String(value || ''); return text.includes(marker) ? text.split(marker)[1].split('?')[0] : text; }
 async function signedDeliveryNoteUrl_(value) { const path = deliveryNotePath_(value); if (!path) return ''; const response = await fetch(`${CONFIG.SUPABASE_URL}/storage/v1/object/sign/${NOTE_BUCKET}/${path}`, {method: 'POST', headers: supabaseHeaders(), body: JSON.stringify({expiresIn: 3600})}); if (!response.ok) return ''; const data = await response.json(); return data.signedURL ? `${CONFIG.SUPABASE_URL}/storage/v1${data.signedURL}` : ''; }
-async function resolveDeliveryNoteLinks_() { await Promise.all(records.map(async record => { if (record.deliveryNoteUrl) record.deliveryNoteLink = await signedDeliveryNoteUrl_(record.deliveryNoteUrl); })); }
+async function resolveDeliveryNoteLinks_() { await Promise.all(records.map(async record => { if (record.deliveryNoteUrl) record.deliveryNoteLink = await signedDeliveryNoteUrl_(record.deliveryNoteUrl); if (record.poAttachmentUrl) record.poAttachmentLink = await signedDeliveryNoteUrl_(record.poAttachmentUrl); })); }
+async function uploadPoAttachment(recordId, file) { if (!cloudEnabled()) throw new Error('PO-copy upload needs cloud sync'); if (file.size > 10 * 1024 * 1024) throw new Error('PO copy must be 10 MB or smaller'); const name = file.name.replace(/[^a-zA-Z0-9._-]/g, '_'); const path = `po-copies/${recordId}/${Date.now()}-${name}`; const response = await fetch(`${CONFIG.SUPABASE_URL}/storage/v1/object/${NOTE_BUCKET}/${path}`, {method: 'POST', headers: {...supabaseHeaders(), 'Content-Type': file.type || 'application/octet-stream', 'x-upsert': 'true'}, body: file}); if (!response.ok) throw new Error('PO-copy upload failed'); return path; }
 async function uploadDeliveryNote(recordId, file) { if (!cloudEnabled()) throw new Error('Delivery-note upload needs cloud sync'); if (file.size > 10 * 1024 * 1024) throw new Error('Delivery note must be 10 MB or smaller'); const name = file.name.replace(/[^a-zA-Z0-9._-]/g, '_'); const path = `${recordId}/${Date.now()}-${name}`; const response = await fetch(`${CONFIG.SUPABASE_URL}/storage/v1/object/${NOTE_BUCKET}/${path}`, {method: 'POST', headers: {...supabaseHeaders(), 'Content-Type': file.type || 'application/octet-stream', 'x-upsert': 'true'}, body: file}); if (!response.ok) throw new Error('Delivery-note upload failed'); return path; }
 function updateFilters() { const customers = [...new Set(records.map(record => record.customerName).filter(Boolean))].sort(); const select = $('customerFilter'); const chosen = select.value; select.innerHTML = '<option value="">All customers</option>' + customers.map(customer => `<option value="${safe(customer)}">${safe(customer)}</option>`).join(''); select.value = chosen; }
 function localIsoDate_(value) { const year = value.getFullYear(), month = String(value.getMonth() + 1).padStart(2, '0'), day = String(value.getDate()).padStart(2, '0'); return `${year}-${month}-${day}`; }
@@ -66,3 +67,61 @@ function initialiseDateRangeControls_() {
 }
 
 initialiseDateRangeControls_();
+
+/* Manual PO copy support. The file is separate from a delivery note, so it
+   never changes the PO delivery status. */
+const persistBeforePoCopy_ = persist;
+persist = async function(record, deleting = false, isNew = false) {
+  const poCopy = $('poForm').elements.poAttachment?.files?.[0];
+
+  if (!deleting && poCopy && poCopy.size) {
+    record.poAttachmentUrl = await uploadPoAttachment(record.id, poCopy);
+    record.poAttachmentLink = await signedDeliveryNoteUrl_(record.poAttachmentUrl);
+  }
+
+  return persistBeforePoCopy_(record, deleting, isNew);
+};
+
+const renderBeforePoCopy_ = render;
+render = function() {
+  renderBeforePoCopy_();
+
+  const showing = filtered();
+
+  [...$('poTableBody').rows].forEach((row, index) => {
+    const record = showing[index];
+
+    if (!record?.poAttachmentLink) {
+      return;
+    }
+
+    const link = document.createElement('a');
+    link.className = 'note-link';
+    link.href = record.poAttachmentLink;
+    link.target = '_blank';
+    link.rel = 'noopener';
+    link.textContent = 'View PO copy';
+    row.cells[0].append(link);
+  });
+};
+
+function showAddPoChoice_() {
+  $('addPoChoiceDialog').showModal();
+}
+
+function initialiseManualPoChoice_() {
+  $('newPoBtn').onclick = showAddPoChoice_;
+  $('emptyNewBtn').onclick = showAddPoChoice_;
+  $('closePoChoice').onclick = () => $('addPoChoiceDialog').close();
+  $('manualPoChoice').onclick = () => {
+    $('addPoChoiceDialog').close();
+    openDialog();
+  };
+  $('uploadPoChoice').onclick = () => {
+    $('addPoChoiceDialog').close();
+    openDialog();
+    setTimeout(() => $('poForm').elements.poAttachment.click(), 100);
+  };
+}
+
+initialiseManualPoChoice_();

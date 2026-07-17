@@ -7,6 +7,7 @@
     <title>KSDL PO Tracker</title>
     <link rel="stylesheet" href="styles.css" />
     <link rel="stylesheet" href="mobile-filters.css" />
+    <link rel="stylesheet" href="manual-po.css" />
     <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
   </head>
   <body>
@@ -78,6 +79,7 @@
       <div class="form-grid">
         <label>Customer name*<input name="customerName" required placeholder="e.g. DMart" /></label>
         <label>PO number*<input name="poNumber" required placeholder="e.g. DM-45678" /></label>
+        <label class="span-2">PO copy <small>Optional: PDF, JPG or PNG received through WhatsApp or from the store. This does not change delivery status.</small><input name="poAttachment" type="file" accept="application/pdf,image/jpeg,image/png" /></label>
         <label>PO date*<input name="poDate" type="date" required /></label>
         <label>PO received date*<input name="poReceivedDate" type="date" required /></label>
         <label>Delivery date<input name="deliveryDate" type="date" /></label>
@@ -94,6 +96,18 @@
       </div>
       <div class="modal-actions"><button type="button" id="deleteBtn" class="danger hidden">Delete</button><span></span><button type="button" id="cancelBtn">Cancel</button><button class="primary">Save PO</button></div>
     </form></dialog>
+    <dialog id="addPoChoiceDialog" class="choice-dialog">
+      <div class="choice-card">
+        <span class="eyebrow">ADD PURCHASE ORDER</span>
+        <h2>How would you like to add this PO?</h2>
+        <p>You can enter the details directly, or first upload a WhatsApp/photo/PDF copy and then confirm the details.</p>
+        <div class="choice-actions">
+          <button id="manualPoChoice" type="button" class="primary">Enter manually</button>
+          <button id="uploadPoChoice" type="button">Upload PO copy</button>
+        </div>
+        <button id="closePoChoice" type="button" class="text-btn">Cancel</button>
+      </div>
+    </dialog>
     <div id="toast" class="toast" role="status"></div>
     <script src="config.js"></script><script src="app.js"></script>
   </body>

@@ -1,0 +1,39 @@
+.choice-dialog {
+  width: min(500px, calc(100% - 30px));
+}
+
+.choice-card {
+  padding: 24px;
+}
+
+.choice-card h2 {
+  margin: 5px 0 8px;
+  font-size: 20px;
+}
+
+.choice-card p {
+  color: var(--muted);
+  margin: 0 0 20px;
+}
+
+.choice-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 13px;
+}
+
+.note-link {
+  display: block;
+  width: fit-content;
+  margin-top: 4px;
+  color: var(--green);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+@media (max-width: 580px) {
+  .choice-actions {
+    grid-template-columns: 1fr;
+  }
+}
