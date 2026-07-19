@@ -134,3 +134,31 @@ function initialiseManualPoChoice_() {
 }
 
 initialiseManualPoChoice_();
+
+/* Keep an active secure session when the page is refreshed in the same tab. */
+async function restoreSecureSession_() {
+  if (!secureLoginRequired()) return;
+
+  try {
+    const saved = JSON.parse(
+      sessionStorage.getItem('ksdl-po-tracker-session') || 'null'
+    );
+
+    if (!saved?.access_token || (saved.expires_at && saved.expires_at * 1000 <= Date.now() + 30000)) {
+      sessionStorage.removeItem('ksdl-po-tracker-session');
+      return;
+    }
+
+    authSession = saved;
+    $('signedInAs').textContent = saved.user?.email || '';
+    $('loginScreen').classList.add('hidden');
+    $('app').classList.remove('hidden');
+    await loadRecords();
+    clearInterval(refreshTimer);
+    refreshTimer = setInterval(loadRecords, 60000);
+  } catch (error) {
+    sessionStorage.removeItem('ksdl-po-tracker-session');
+  }
+}
+
+restoreSecureSession_();
