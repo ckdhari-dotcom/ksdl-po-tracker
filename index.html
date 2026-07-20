@@ -68,7 +68,7 @@
       <section class="table-card">
         <div class="table-title"><div><h2>All purchase orders</h2><p id="resultCount">0 records</p></div><button id="clearFilters" class="text-btn">Clear filters</button></div>
         <div class="table-wrap"><table><thead><tr>
-          <th>PO / Customer</th><th>PO Date</th><th>Status</th><th>Delivery</th><th>Value</th><th>Invoice</th><th>Transport</th><th>Assigned</th><th>Age</th><th></th>
+          <th>PO / Customer</th><th>PO Date</th><th>Status</th><th>Delivery</th><th>Value</th><th>Invoice</th><th>Transport</th><th>Assigned</th><th>Delivery location</th><th>Age</th><th></th>
         </tr></thead><tbody id="poTableBody"></tbody></table></div>
         <div id="emptyState" class="empty-state hidden"><h3>No purchase orders found</h3><p>Add your first PO, or import your existing Excel file.</p><button id="emptyNewBtn" class="primary">+ Add PO</button></div>
       </section>
@@ -81,6 +81,7 @@
       <div class="form-grid">
         <label>Customer name*<input name="customerName" required placeholder="e.g. DMart" /></label>
         <label>PO number*<input name="poNumber" required placeholder="e.g. DM-45678" /></label>
+        <label>Delivery location<input name="deliveryLocation" list="deliveryLocations" placeholder="e.g. Bopal" /></label>
         <label class="span-2">PO copy <small>Optional: PDF, JPG or PNG received through WhatsApp or from the store. This does not change delivery status.</small><input name="poAttachment" type="file" accept="application/pdf,image/jpeg,image/png" /></label>
         <label>PO date*<input name="poDate" type="date" required /></label>
         <label>PO received date*<input name="poReceivedDate" type="date" required /></label>
@@ -98,6 +99,7 @@
       </div>
       <div class="modal-actions"><button type="button" id="deleteBtn" class="danger hidden">Delete</button><span></span><button type="button" id="cancelBtn">Cancel</button><button class="primary">Save PO</button></div>
     </form></dialog>
+    <datalist id="deliveryLocations"><option value="Antrix"></option><option value="Bopal"></option><option value="Bapunagar"></option><option value="Palanpur"></option></datalist>
     <dialog id="addPoChoiceDialog" class="choice-dialog">
       <div class="choice-card">
         <span class="eyebrow">ADD PURCHASE ORDER</span>
