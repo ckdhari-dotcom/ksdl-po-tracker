@@ -17,6 +17,15 @@
   margin-top: 2px;
 }
 
+.note-link {
+  display: block;
+  width: fit-content;
+  margin-top: 4px;
+  color: var(--green);
+  font-size: 12px;
+  font-weight: 700;
+}
+
 @media (max-width: 580px) {
   .toolbar {
     display: grid;
