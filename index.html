@@ -93,6 +93,8 @@
         <label>Transport amount (₹)<input name="transportAmount" type="number" min="0" step="0.01" placeholder="0" /></label>
         <label>LR / tracking number<input name="trackingNumber" /></label>
         <label>Assigned to<input name="assignedTo" placeholder="e.g. Supply Agent" /></label>
+        <label>Executive review<select name="reviewStatus"><option value="Approved">Approved</option><option value="Needs Correction">Send back for correction</option><option value="Submitted">Submitted by executive</option><option value="Draft">Draft</option></select></label>
+        <label class="span-2">Correction note for executive<textarea name="correctionNote" rows="2" placeholder="Explain what needs to be corrected before sending it back"></textarea></label>
         <label class="span-2">Remarks<textarea name="remarks" rows="3" placeholder="Any delivery or order note"></textarea></label>
       </div>
       <div class="modal-actions"><button type="button" id="deleteBtn" class="danger hidden">Delete</button><span></span><button type="button" id="cancelBtn">Cancel</button><button class="primary">Save PO</button></div>

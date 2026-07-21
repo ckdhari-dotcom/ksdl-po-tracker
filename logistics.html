@@ -27,6 +27,7 @@
           <a class="nav-link" href="./">PO Tracker</a>
           <span id="roleBadge" class="role-badge">Loading…</span>
           <button id="signOutBtn" class="text-btn" type="button">Sign out</button>
+          <button id="manualPoBtn" class="text-btn" type="button">+ Manual PO</button>
           <button id="newTripBtn" class="primary" type="button">+ New trip</button>
         </div>
       </header>
@@ -34,9 +35,9 @@
       <p id="syncMessage" class="sync-message" aria-live="polite"></p>
 
       <section id="readyPoPanel" class="table-card executive-start hidden">
-        <div class="table-title"><div><span class="eyebrow">START HERE</span><h2>Received POs ready for dispatch</h2><p>Select one or more POs and create the tempo trip with invoice details.</p></div></div>
-        <div class="table-wrap"><table><thead><tr><th>PO / Customer</th><th>Location</th><th>PO date</th><th>Value</th><th></th></tr></thead><tbody id="readyPoBody"></tbody></table></div>
-        <div id="readyPoEmpty" class="empty-state hidden"><h3>No Received POs are waiting</h3><p>All available POs have been planned into a trip, or there are no new POs yet.</p></div>
+        <div class="table-title"><div><span class="eyebrow">START HERE</span><h2>Open POs ready for dispatch</h2><p>Select one or more Received POs, then create one tempo trip with invoice details.</p></div><button id="createSelectedTripBtn" class="primary" type="button" disabled>Create trip / dispatch (0)</button></div>
+        <div class="table-wrap"><table><thead><tr><th></th><th>PO / Customer</th><th>Location</th><th>Dates</th><th>Status / review</th><th>Value</th><th>Invoice</th><th>Transport</th><th>Remarks</th><th></th></tr></thead><tbody id="readyPoBody"></tbody></table></div>
+        <div id="readyPoEmpty" class="empty-state hidden"><h3>No open POs are waiting</h3><p>All available POs have been planned into a trip, or there are no new POs yet.</p></div>
       </section>
 
       <section class="summary-grid" aria-label="Logistics summary">
@@ -77,6 +78,7 @@
           <label>Trip status<select id="tripStatus"><option>Planning</option><option>Awaiting Approval</option><option>Approved</option><option>Dispatched</option><option>Delivered</option><option>Cancelled</option></select></label>
           <label>Invoice number<input id="tripInvoiceNumber" placeholder="Tally invoice number" /></label>
           <label>Invoice date<input id="tripInvoiceDate" type="date" /></label>
+          <label class="span-all">Invoice copy<input id="tripInvoiceCopy" type="file" accept="application/pdf,image/*" /><small>Attach the invoice PDF or image for this tempo trip.</small></label>
         </div>
 
         <section class="cost-panel">
@@ -102,6 +104,26 @@
         <label class="remarks-label">Remarks<textarea id="tripRemarks" rows="3" placeholder="Route, delivery instruction, payment note…"></textarea></label>
         <p id="tripError" class="error" aria-live="polite"></p>
         <div class="dialog-actions"><button type="button" class="text-btn" data-close="tripDialog">Cancel</button><button id="saveTripBtn" class="primary" value="default">Save trip</button></div>
+      </form>
+    </dialog>
+
+    <dialog id="manualPoDialog" class="trip-dialog">
+      <form id="manualPoForm" method="dialog">
+        <div class="dialog-head"><div><span class="eyebrow">EXECUTIVE ENTRY</span><h2 id="manualPoTitle">Add manual PO</h2></div><button class="close-btn" type="button" data-close="manualPoDialog" aria-label="Close">×</button></div>
+        <input id="manualPoId" type="hidden" />
+        <div class="form-grid">
+          <label>Customer name<input id="manualCustomer" required placeholder="e.g. DMart" /></label>
+          <label>PO number<input id="manualPoNumber" required placeholder="Store PO number" /></label>
+          <label>Delivery location<input id="manualLocation" placeholder="e.g. Bopal" /></label>
+          <label>PO date<input id="manualPoDate" type="date" required /></label>
+          <label>PO received date<input id="manualReceivedDate" type="date" required /></label>
+          <label>PO value (₹)<input id="manualPoValue" type="number" min="0" step="0.01" value="0" /></label>
+          <label class="span-all">PO copy (optional)<input id="manualPoCopy" type="file" accept="application/pdf,image/*" /><small>Upload a photo/PDF if the store gave a printed or WhatsApp PO.</small></label>
+          <label class="span-all">Correction / delivery update note<textarea id="manualRemarks" rows="3" placeholder="Add any instruction or explain a correction"></textarea></label>
+          <label id="manualSlipLabel" class="span-all hidden">Replacement delivery slip<input id="manualDeliverySlip" type="file" accept="application/pdf,image/*" /><small>Use only when you are correcting a delivery entry returned by the owner.</small></label>
+        </div>
+        <p id="manualPoError" class="error" aria-live="polite"></p>
+        <div class="dialog-actions"><button type="button" class="text-btn" data-close="manualPoDialog">Cancel</button><button id="saveManualPoBtn" class="primary">Save manual PO</button></div>
       </form>
     </dialog>
 

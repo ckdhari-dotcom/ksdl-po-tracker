@@ -12,6 +12,7 @@
   let trips = [];
   let purchaseOrders = [];
   let activeTrip = null;
+  let selectedOpenPoIds = new Set();
 
   const $ = id => document.getElementById(id);
   const isOwner = () => role === 'owner';
@@ -36,7 +37,7 @@
   function show(id) { $(id).classList.remove('hidden'); }
   function hide(id) { $(id).classList.add('hidden'); }
   function setMessage(message = '', error = false) { const el = $('syncMessage'); el.textContent = message; el.style.color = error ? '#b42318' : ''; }
-  function setOwnerVisibility() { document.querySelectorAll('.owner-only').forEach(el => el.classList.toggle('hidden', !isOwner())); }
+  function setOwnerVisibility() { document.querySelectorAll('.owner-only').forEach(el => el.classList.toggle('hidden', !isOwner())); $('manualPoBtn').classList.toggle('hidden', isOwner()); }
 
   async function signIn(email, password) {
     const data = await api('/auth/v1/token?grant_type=password', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, password }) });
@@ -58,7 +59,7 @@
     setMessage('Refreshing trips…');
     const [tripData, poData] = await Promise.all([
       api('/rest/v1/delivery_trips?select=*,delivery_trip_pos(id,purchase_order_id,allocated_cost,allocation_method,purchase_orders(id,po_number,customer_name,delivery_location,po_value,status))&order=trip_date.desc,created_at.desc'),
-      api('/rest/v1/purchase_orders?select=id,po_number,customer_name,delivery_location,po_value,status,po_date&order=po_date.desc')
+      api('/rest/v1/purchase_orders?select=id,po_number,customer_name,delivery_location,po_value,status,po_date,po_received_date,invoice_number,invoice_date,transporter,transport_amount,assigned_to,remarks,po_attachment_url,delivery_note_url,entry_source,review_status,correction_note,created_by&order=po_date.desc')
     ]);
     trips = Array.isArray(tripData) ? tripData : [];
     purchaseOrders = Array.isArray(poData) ? poData : [];
@@ -113,9 +114,20 @@
     panel.classList.toggle('hidden', !showForExecutive);
     if (!showForExecutive) return;
     const busyIds = new Set(trips.filter(trip => !['Delivered', 'Cancelled'].includes(trip.status)).flatMap(trip => (trip.delivery_trip_pos || []).map(link => link.purchase_order_id)));
-    const ready = purchaseOrders.filter(po => po.status === 'Received' && !busyIds.has(po.id));
-    $('readyPoBody').innerHTML = ready.map(po => `<tr><td><div class="cell-main">${esc(po.po_number)}</div><div class="cell-muted">${esc(po.customer_name || 'Customer')}</div></td><td>${esc(po.delivery_location || 'Location pending')}</td><td>${esc(po.po_date || '—')}</td><td>${money(po.po_value)}</td><td><button class="start-trip" data-po-id="${po.id}" type="button">Create trip</button></td></tr>`).join('');
+    const ready = purchaseOrders.filter(po => {
+      const returnedToMe = po.review_status === 'Needs Correction' && po.created_by === session?.user?.id;
+      return returnedToMe || (!['Delivered', 'Cancelled'].includes(po.status) && !busyIds.has(po.id));
+    });
+    selectedOpenPoIds = new Set([...selectedOpenPoIds].filter(id => ready.some(po => po.id === id && po.status === 'Received')));
+    $('readyPoBody').innerHTML = ready.map(po => {
+      const canDispatch = po.status === 'Received' && !busyIds.has(po.id);
+      const returned = po.review_status === 'Needs Correction' && po.created_by === session?.user?.id;
+      const review = returned ? `<span class="status awaiting">Correction required</span><div class="cell-muted">${esc(po.correction_note || 'Owner requested a correction')}</div>` : `<span class="status">${esc(po.status)}</span><div class="cell-muted">${esc(po.entry_source || 'Gmail')} · ${esc(po.review_status || 'Approved')}</div>`;
+      return `<tr><td>${canDispatch ? `<input class="open-po-choice" type="checkbox" value="${po.id}" ${selectedOpenPoIds.has(po.id) ? 'checked' : ''} aria-label="Select ${esc(po.po_number)}" />` : ''}</td><td><div class="cell-main">${esc(po.po_number)}</div><div class="cell-muted">${esc(po.customer_name || 'Customer')}</div></td><td>${esc(po.delivery_location || '—')}</td><td>${esc(po.po_date || '—')}<div class="cell-muted">Received ${esc(po.po_received_date || '—')}</div></td><td>${review}</td><td>${money(po.po_value)}</td><td>${esc(po.invoice_number || '—')}<div class="cell-muted">${esc(po.invoice_date || '')}</div></td><td>${esc(po.transporter || '—')}<div class="cell-muted">${money(po.transport_amount)}</div></td><td>${esc(po.remarks || '—')}</td><td>${returned ? `<button class="correct-manual-po" data-id="${po.id}" type="button">Correct</button>` : ''}</td></tr>`;
+    }).join('');
     $('readyPoEmpty').classList.toggle('hidden', ready.length !== 0);
+    $('createSelectedTripBtn').disabled = selectedOpenPoIds.size === 0;
+    $('createSelectedTripBtn').textContent = `Create trip / dispatch (${selectedOpenPoIds.size})`;
   }
 
   function getSelectedIds() { return [...document.querySelectorAll('.po-choice:checked')].map(input => input.value); }
@@ -166,21 +178,24 @@
     const formData = getFormTrip(); const selected = getSelectedIds();
     if (!formData.trip_date) { error.textContent = 'Please enter the trip date.'; return; }
     if (!selected.length) { error.textContent = 'Select at least one PO loaded in this trip.'; return; }
+    const invoiceCopy = $('tripInvoiceCopy').files[0];
+    if (!activeTrip && !invoiceCopy) { error.textContent = 'Attach the invoice copy before saving this new trip.'; return; }
     if (!isOwner()) { formData.quoted_cost = activeTrip?.quoted_cost || 0; formData.approved_cost = activeTrip?.approved_cost ?? null; }
     try {
       $('saveTripBtn').disabled = true; $('saveTripBtn').textContent = 'Saving…';
-      let tripId = activeTrip?.id;
-      if (tripId) {
+      let tripId = activeTrip?.id || crypto.randomUUID();
+      if (invoiceCopy) formData.invoice_attachment_url = await uploadTripInvoice(tripId, invoiceCopy);
+      if (activeTrip) {
         await api(`/rest/v1/delivery_trips?id=eq.${encodeURIComponent(tripId)}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json', Prefer: 'return=minimal' }, body: JSON.stringify(formData) });
         await api(`/rest/v1/delivery_trip_pos?trip_id=eq.${encodeURIComponent(tripId)}`, { method: 'DELETE', headers: { Prefer: 'return=minimal' } });
       } else {
-        const created = await api('/rest/v1/delivery_trips', { method: 'POST', headers: { 'Content-Type': 'application/json', Prefer: 'return=representation' }, body: JSON.stringify(formData) });
-        tripId = created?.[0]?.id;
+        formData.id = tripId;
+        await api('/rest/v1/delivery_trips', { method: 'POST', headers: { 'Content-Type': 'application/json', Prefer: 'return=minimal' }, body: JSON.stringify(formData) });
       }
       const chosen = purchaseOrders.filter(po => selected.includes(po.id)); const total = totalActual(formData); const method = $('allocationMethod').value; const poValueTotal = chosen.reduce((sum, po) => sum + number(po.po_value), 0);
       const links = chosen.map(po => ({ trip_id: tripId, purchase_order_id: po.id, allocation_method: method, allocated_cost: method === 'PO Value' && poValueTotal ? total * number(po.po_value) / poValueTotal : total / chosen.length }));
       await api('/rest/v1/delivery_trip_pos', { method: 'POST', headers: { 'Content-Type': 'application/json', Prefer: 'return=minimal' }, body: JSON.stringify(links) });
-      $('tripDialog').close(); await loadData(); setMessage('Trip saved successfully.');
+      selectedOpenPoIds.clear(); $('tripDialog').close(); await loadData(); setMessage('Trip saved successfully.');
     } catch (err) { error.textContent = err.message || 'Could not save this trip.'; }
     finally { $('saveTripBtn').disabled = false; $('saveTripBtn').textContent = 'Save trip'; }
   }
@@ -212,6 +227,15 @@
     return path;
   }
 
+  async function uploadTripInvoice(tripId, file) {
+    if (!file) return null;
+    if (file.size > 10 * 1024 * 1024) throw new Error('Invoice copy must be 10 MB or smaller.');
+    const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+    const path = `trip-invoices/${tripId}/${Date.now()}-${safeName}`;
+    await api(`/storage/v1/object/delivery-notes/${path}`, { method: 'POST', headers: { 'Content-Type': file.type || 'application/octet-stream', 'x-upsert': 'true' }, body: file });
+    return path;
+  }
+
   async function completeActiveTrip() {
     if (!activeTrip) return;
     const button = $('completeTripBtn');
@@ -222,6 +246,55 @@
       $('viewDialog').close(); await loadData(); setMessage('Delivery slip saved — trip and linked POs are now Delivered.');
     } catch (err) { alert(err.message || 'Unable to complete this trip.'); }
     finally { button.disabled = false; button.textContent = 'Upload slip & complete trip'; }
+  }
+
+  async function uploadManualFile(recordId, file, folder) {
+    if (!file) return null;
+    if (file.size > 10 * 1024 * 1024) throw new Error('File must be 10 MB or smaller.');
+    const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+    const path = `${folder}/${recordId}/${Date.now()}-${safeName}`;
+    await api(`/storage/v1/object/delivery-notes/${path}`, { method: 'POST', headers: { 'Content-Type': file.type || 'application/octet-stream', 'x-upsert': 'true' }, body: file });
+    return path;
+  }
+
+  function openManualPoForm(record = null) {
+    $('manualPoForm').reset(); $('manualPoError').textContent = ''; $('manualPoId').value = record?.id || '';
+    const correction = record?.review_status === 'Needs Correction';
+    $('manualPoTitle').textContent = correction ? 'Correct returned PO' : 'Add manual PO';
+    $('manualCustomer').value = record?.customer_name || ''; $('manualPoNumber').value = record?.po_number || '';
+    $('manualLocation').value = record?.delivery_location || ''; $('manualPoDate').value = record?.po_date || today();
+    $('manualReceivedDate').value = record?.po_received_date || today(); $('manualPoValue').value = record?.po_value ?? 0;
+    $('manualRemarks').value = correction ? `${record?.remarks || ''}${record?.correction_note ? `\nOwner correction: ${record.correction_note}` : ''}`.trim() : (record?.remarks || '');
+    $('manualSlipLabel').classList.toggle('hidden', !correction);
+    $('manualPoDialog').showModal();
+  }
+
+  async function saveManualPo(event) {
+    event.preventDefault();
+    const error = $('manualPoError'); error.textContent = '';
+    const existing = purchaseOrders.find(po => po.id === $('manualPoId').value);
+    const id = existing?.id || crypto.randomUUID();
+    const customer = $('manualCustomer').value.trim(), poNumber = $('manualPoNumber').value.trim();
+    if (!customer || !poNumber) { error.textContent = 'Customer name and PO number are required.'; return; }
+    try {
+      $('saveManualPoBtn').disabled = true; $('saveManualPoBtn').textContent = 'Saving…';
+      const record = {
+        id, customer_name: customer, po_number: poNumber, delivery_location: $('manualLocation').value.trim() || null,
+        po_date: $('manualPoDate').value, po_received_date: $('manualReceivedDate').value, po_value: number($('manualPoValue').value),
+        remarks: $('manualRemarks').value.trim() || null, entry_source: 'Manual',
+        status: existing?.status || 'Received', review_status: existing ? 'Submitted' : 'Draft', correction_note: null
+      };
+      const poCopy = $('manualPoCopy').files[0], replacementSlip = $('manualDeliverySlip').files[0];
+      if (poCopy) record.po_attachment_url = await uploadManualFile(id, poCopy, 'manual-po-copies');
+      if (replacementSlip) record.delivery_note_url = await uploadManualFile(id, replacementSlip, 'manual-delivery-corrections');
+      if (existing) {
+        await api(`/rest/v1/purchase_orders?id=eq.${encodeURIComponent(id)}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json', Prefer: 'return=minimal' }, body: JSON.stringify(record) });
+      } else {
+        await api('/rest/v1/purchase_orders', { method: 'POST', headers: { 'Content-Type': 'application/json', Prefer: 'return=minimal' }, body: JSON.stringify(record) });
+      }
+      $('manualPoDialog').close(); await loadData(); setMessage(existing ? 'Correction resubmitted to the owner.' : 'Manual PO created. Select it to create a dispatch trip.');
+    } catch (err) { error.textContent = err.message || 'Could not save the manual PO.'; }
+    finally { $('saveManualPoBtn').disabled = false; $('saveManualPoBtn').textContent = 'Save manual PO'; }
   }
   async function approveActiveTrip() {
     if (!activeTrip || !isOwner()) return;
@@ -237,11 +310,13 @@
   }
   function bindEvents() {
     $('loginForm').addEventListener('submit', async event => { event.preventDefault(); $('loginError').textContent = ''; try { await signIn($('emailInput').value.trim(), $('passwordInput').value); await start(); } catch (err) { $('loginError').textContent = err.message || 'Sign in failed.'; } });
-    $('signOutBtn').addEventListener('click', signOut); $('newTripBtn').addEventListener('click', () => openTripForm()); $('emptyNewBtn').addEventListener('click', () => openTripForm());
+    $('signOutBtn').addEventListener('click', signOut); $('newTripBtn').addEventListener('click', () => openTripForm()); $('emptyNewBtn').addEventListener('click', () => openTripForm()); $('manualPoBtn').addEventListener('click', () => openManualPoForm());
+    $('createSelectedTripBtn').addEventListener('click', () => { if (selectedOpenPoIds.size) openTripForm(null, [...selectedOpenPoIds]); });
     $('refreshBtn').addEventListener('click', () => loadData().catch(err => setMessage(err.message, true))); $('searchInput').addEventListener('input', render); $('statusFilter').addEventListener('change', render);
-    $('tripForm').addEventListener('submit', saveTrip); $('poSearch').addEventListener('input', () => renderChecklist(getSelectedIds())); $('allocationMethod').addEventListener('change', updateAllocationPreview);
+    $('tripForm').addEventListener('submit', saveTrip); $('manualPoForm').addEventListener('submit', saveManualPo); $('poSearch').addEventListener('input', () => renderChecklist(getSelectedIds())); $('allocationMethod').addEventListener('change', updateAllocationPreview);
     ['actualFreight', 'loadingCost', 'parkingToll', 'otherCost'].forEach(id => $(id).addEventListener('input', refreshTotal));
-    document.addEventListener('click', event => { const closer = event.target.closest('[data-close]'); if (closer) $(closer.dataset.close).close(); const view = event.target.closest('.view-trip'); if (view) openTripView(view.dataset.id); const starter = event.target.closest('.start-trip'); if (starter) openTripForm(null, [starter.dataset.poId]); });
+    document.addEventListener('click', event => { const closer = event.target.closest('[data-close]'); if (closer) $(closer.dataset.close).close(); const view = event.target.closest('.view-trip'); if (view) openTripView(view.dataset.id); const correction = event.target.closest('.correct-manual-po'); if (correction) openManualPoForm(purchaseOrders.find(po => po.id === correction.dataset.id)); });
+    document.addEventListener('change', event => { if (!event.target.matches('.open-po-choice')) return; if (event.target.checked) selectedOpenPoIds.add(event.target.value); else selectedOpenPoIds.delete(event.target.value); renderReadyPos(); });
     $('editTripBtn').addEventListener('click', () => { $('viewDialog').close(); openTripForm(activeTrip); }); $('approveTripBtn').addEventListener('click', approveActiveTrip); $('deleteTripBtn').addEventListener('click', deleteActiveTrip); $('completeTripBtn').addEventListener('click', completeActiveTrip);
   }
   async function start() {
