@@ -85,6 +85,7 @@
   function statusClass(status) { return status === 'Awaiting Approval' ? 'awaiting' : status === 'Cancelled' ? 'cancelled' : ''; }
   function render() {
     renderSummary();
+    renderReadyPos();
     const search = $('searchInput').value.trim().toLowerCase();
     const status = $('statusFilter').value;
     const filtered = trips.filter(t => tripMatches(t, search, status));
@@ -106,11 +107,23 @@
     setOwnerVisibility();
   }
 
+  function renderReadyPos() {
+    const panel = $('readyPoPanel');
+    const showForExecutive = !isOwner();
+    panel.classList.toggle('hidden', !showForExecutive);
+    if (!showForExecutive) return;
+    const busyIds = new Set(trips.filter(trip => !['Delivered', 'Cancelled'].includes(trip.status)).flatMap(trip => (trip.delivery_trip_pos || []).map(link => link.purchase_order_id)));
+    const ready = purchaseOrders.filter(po => po.status === 'Received' && !busyIds.has(po.id));
+    $('readyPoBody').innerHTML = ready.map(po => `<tr><td><div class="cell-main">${esc(po.po_number)}</div><div class="cell-muted">${esc(po.customer_name || 'Customer')}</div></td><td>${esc(po.delivery_location || 'Location pending')}</td><td>${esc(po.po_date || '—')}</td><td>${money(po.po_value)}</td><td><button class="start-trip" data-po-id="${po.id}" type="button">Create trip</button></td></tr>`).join('');
+    $('readyPoEmpty').classList.toggle('hidden', ready.length !== 0);
+  }
+
   function getSelectedIds() { return [...document.querySelectorAll('.po-choice:checked')].map(input => input.value); }
   function getFormTrip() {
     return {
       trip_date: $('tripDate').value, transporter: $('transporter').value.trim() || null, vehicle_number: $('vehicleNumber').value.trim() || null,
       driver_name: $('driverName').value.trim() || null, driver_phone: $('driverPhone').value.trim() || null, status: $('tripStatus').value,
+      invoice_number: $('tripInvoiceNumber').value.trim() || null, invoice_date: $('tripInvoiceDate').value || null,
       quoted_cost: number($('quotedCost').value), approved_cost: $('approvedCost').value === '' ? null : number($('approvedCost').value),
       actual_freight: number($('actualFreight').value), loading_cost: number($('loadingCost').value), parking_toll: number($('parkingToll').value), other_cost: number($('otherCost').value), remarks: $('tripRemarks').value.trim() || null
     };
@@ -132,18 +145,19 @@
   }
   function refreshTotal() { $('totalActual').textContent = money(number($('actualFreight').value) + number($('loadingCost').value) + number($('parkingToll').value) + number($('otherCost').value)); updateAllocationPreview(); }
   function setStatusOptions(value) {
-    const allowed = isOwner() ? ['Planning', 'Awaiting Approval', 'Approved', 'Dispatched', 'Delivered', 'Cancelled'] : ['Planning', 'Awaiting Approval', 'Dispatched', 'Delivered'];
+    const allowed = isOwner() ? ['Planning', 'Awaiting Approval', 'Approved', 'Dispatched', 'Delivered', 'Cancelled'] : (activeTrip ? ['Planning', 'Awaiting Approval', 'Dispatched', 'Delivered'] : ['Planning', 'Awaiting Approval']);
     $('tripStatus').innerHTML = allowed.map(status => `<option ${status === value ? 'selected' : ''}>${status}</option>`).join('');
   }
-  function openTripForm(trip = null) {
+  function openTripForm(trip = null, initialSelected = []) {
     activeTrip = trip;
     $('tripForm').reset(); $('tripError').textContent = ''; $('tripId').value = trip?.id || ''; $('tripDialogTitle').textContent = trip ? 'Update delivery trip' : 'New delivery trip';
     $('tripDate').value = trip?.trip_date || today(); $('transporter').value = trip?.transporter || ''; $('vehicleNumber').value = trip?.vehicle_number || '';
     $('driverName').value = trip?.driver_name || ''; $('driverPhone').value = trip?.driver_phone || ''; setStatusOptions(trip?.status || 'Planning');
+    $('tripInvoiceNumber').value = trip?.invoice_number || ''; $('tripInvoiceDate').value = trip?.invoice_date || '';
     $('quotedCost').value = trip?.quoted_cost ?? 0; $('approvedCost').value = trip?.approved_cost ?? ''; $('actualFreight').value = trip?.actual_freight ?? 0;
     $('loadingCost').value = trip?.loading_cost ?? 0; $('parkingToll').value = trip?.parking_toll ?? 0; $('otherCost').value = trip?.other_cost ?? 0; $('tripRemarks').value = trip?.remarks || '';
     document.querySelectorAll('.owner-cost').forEach(el => el.classList.toggle('hidden', !isOwner()));
-    const linked = (trip?.delivery_trip_pos || []).map(link => link.purchase_order_id);
+    const linked = trip ? (trip.delivery_trip_pos || []).map(link => link.purchase_order_id) : initialSelected;
     renderChecklist(linked); refreshTotal(); $('tripDialog').showModal();
   }
   async function saveTrip(event) {
@@ -177,11 +191,37 @@
     $('viewTripBody').innerHTML = `<div class="view-grid">
       <div class="view-item"><span>Transporter</span><strong>${esc(activeTrip.transporter || '—')}</strong></div><div class="view-item"><span>Driver</span><strong>${esc(activeTrip.driver_name || '—')}${activeTrip.driver_phone ? ` · ${esc(activeTrip.driver_phone)}` : ''}</strong></div>
       <div class="view-item"><span>Status</span><strong>${esc(activeTrip.status)}</strong></div><div class="view-item"><span>Actual trip cost</span><strong>${money(totalActual(activeTrip))}</strong></div>
+      <div class="view-item"><span>Invoice</span><strong>${esc(activeTrip.invoice_number || '—')}${activeTrip.invoice_date ? ` · ${esc(activeTrip.invoice_date)}` : ''}</strong></div>
       ${isOwner() ? `<div class="view-item"><span>Quoted / approved</span><strong>${money(activeTrip.quoted_cost)} / ${activeTrip.approved_cost == null ? '—' : money(activeTrip.approved_cost)}</strong></div>` : ''}
       <div class="view-item"><span>Cost detail</span><strong>Freight ${money(activeTrip.actual_freight)} · Extras ${money(number(activeTrip.loading_cost) + number(activeTrip.parking_toll) + number(activeTrip.other_cost))}</strong></div>
     </div><div class="view-pos"><h3>Linked POs</h3><div class="trip-pos" style="margin-top:8px">${pos.map(link => `<span class="po-chip">${esc(link.purchase_orders?.po_number || 'PO')} · ${esc(link.purchase_orders?.delivery_location || 'Location pending')} · ${money(link.allocated_cost)}</span>`).join('') || 'No PO linked'}</div></div>${activeTrip.remarks ? `<div class="view-pos"><h3>Remarks</h3><p>${esc(activeTrip.remarks)}</p></div>` : ''}`;
     $('approveTripBtn').classList.toggle('hidden', !isOwner() || !['Planning', 'Awaiting Approval'].includes(activeTrip.status));
     $('deleteTripBtn').classList.toggle('hidden', !isOwner()); $('viewDialog').showModal();
+    const isClosed = ['Delivered', 'Cancelled'].includes(activeTrip.status);
+    $('completeTripPanel').classList.toggle('hidden', isClosed);
+    $('editTripBtn').classList.toggle('hidden', isClosed);
+    $('deliverySlipInput').value = '';
+  }
+
+  async function uploadTripDeliverySlip(tripId, file) {
+    if (!file) throw new Error('Please choose the signed delivery slip first.');
+    if (file.size > 10 * 1024 * 1024) throw new Error('Delivery slip must be 10 MB or smaller.');
+    const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+    const path = `trip-delivery-slips/${tripId}/${Date.now()}-${safeName}`;
+    await api(`/storage/v1/object/delivery-notes/${path}`, { method: 'POST', headers: { 'Content-Type': file.type || 'application/octet-stream', 'x-upsert': 'true' }, body: file });
+    return path;
+  }
+
+  async function completeActiveTrip() {
+    if (!activeTrip) return;
+    const button = $('completeTripBtn');
+    try {
+      button.disabled = true; button.textContent = 'Uploading…';
+      const path = await uploadTripDeliverySlip(activeTrip.id, $('deliverySlipInput').files[0]);
+      await api('/rest/v1/rpc/complete_delivery_trip', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ trip: activeTrip.id, note_path: path }) });
+      $('viewDialog').close(); await loadData(); setMessage('Delivery slip saved — trip and linked POs are now Delivered.');
+    } catch (err) { alert(err.message || 'Unable to complete this trip.'); }
+    finally { button.disabled = false; button.textContent = 'Upload slip & complete trip'; }
   }
   async function approveActiveTrip() {
     if (!activeTrip || !isOwner()) return;
@@ -201,8 +241,8 @@
     $('refreshBtn').addEventListener('click', () => loadData().catch(err => setMessage(err.message, true))); $('searchInput').addEventListener('input', render); $('statusFilter').addEventListener('change', render);
     $('tripForm').addEventListener('submit', saveTrip); $('poSearch').addEventListener('input', () => renderChecklist(getSelectedIds())); $('allocationMethod').addEventListener('change', updateAllocationPreview);
     ['actualFreight', 'loadingCost', 'parkingToll', 'otherCost'].forEach(id => $(id).addEventListener('input', refreshTotal));
-    document.addEventListener('click', event => { const closer = event.target.closest('[data-close]'); if (closer) $(closer.dataset.close).close(); const view = event.target.closest('.view-trip'); if (view) openTripView(view.dataset.id); });
-    $('editTripBtn').addEventListener('click', () => { $('viewDialog').close(); openTripForm(activeTrip); }); $('approveTripBtn').addEventListener('click', approveActiveTrip); $('deleteTripBtn').addEventListener('click', deleteActiveTrip);
+    document.addEventListener('click', event => { const closer = event.target.closest('[data-close]'); if (closer) $(closer.dataset.close).close(); const view = event.target.closest('.view-trip'); if (view) openTripView(view.dataset.id); const starter = event.target.closest('.start-trip'); if (starter) openTripForm(null, [starter.dataset.poId]); });
+    $('editTripBtn').addEventListener('click', () => { $('viewDialog').close(); openTripForm(activeTrip); }); $('approveTripBtn').addEventListener('click', approveActiveTrip); $('deleteTripBtn').addEventListener('click', deleteActiveTrip); $('completeTripBtn').addEventListener('click', completeActiveTrip);
   }
   async function start() {
     if (!baseUrl || !publicKey) { $('loginError').textContent = 'Supabase is not configured in config.js.'; show('loginScreen'); return; }

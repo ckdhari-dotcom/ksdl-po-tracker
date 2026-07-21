@@ -33,6 +33,12 @@
 
       <p id="syncMessage" class="sync-message" aria-live="polite"></p>
 
+      <section id="readyPoPanel" class="table-card executive-start hidden">
+        <div class="table-title"><div><span class="eyebrow">START HERE</span><h2>Received POs ready for dispatch</h2><p>Select one or more POs and create the tempo trip with invoice details.</p></div></div>
+        <div class="table-wrap"><table><thead><tr><th>PO / Customer</th><th>Location</th><th>PO date</th><th>Value</th><th></th></tr></thead><tbody id="readyPoBody"></tbody></table></div>
+        <div id="readyPoEmpty" class="empty-state hidden"><h3>No Received POs are waiting</h3><p>All available POs have been planned into a trip, or there are no new POs yet.</p></div>
+      </section>
+
       <section class="summary-grid" aria-label="Logistics summary">
         <article><span>Open trips</span><strong id="openTrips">0</strong><small>Planning, approved or dispatched</small></article>
         <article class="attention"><span>Awaiting approval</span><strong id="awaitingTrips">0</strong><small>Owner action required</small></article>
@@ -69,6 +75,8 @@
           <label>Driver name<input id="driverName" placeholder="Driver name" /></label>
           <label>Driver phone<input id="driverPhone" inputmode="tel" placeholder="10 digit mobile" /></label>
           <label>Trip status<select id="tripStatus"><option>Planning</option><option>Awaiting Approval</option><option>Approved</option><option>Dispatched</option><option>Delivered</option><option>Cancelled</option></select></label>
+          <label>Invoice number<input id="tripInvoiceNumber" placeholder="Tally invoice number" /></label>
+          <label>Invoice date<input id="tripInvoiceDate" type="date" /></label>
         </div>
 
         <section class="cost-panel">
@@ -101,6 +109,10 @@
       <div>
         <div class="dialog-head"><div><span class="eyebrow">TRIP DETAIL</span><h2 id="viewTripTitle">Delivery trip</h2></div><button class="close-btn" type="button" data-close="viewDialog" aria-label="Close">×</button></div>
         <div id="viewTripBody"></div>
+        <section id="completeTripPanel" class="complete-panel">
+          <h3>Complete delivery</h3><p>Upload the signed delivery slip. This marks the trip and every linked PO as Delivered.</p>
+          <div><input id="deliverySlipInput" type="file" accept="application/pdf,image/*" /><button id="completeTripBtn" class="primary" type="button">Upload slip &amp; complete trip</button></div>
+        </section>
         <div class="dialog-actions"><button id="editTripBtn" class="primary" type="button">Edit trip</button><button id="approveTripBtn" class="primary approval-btn owner-only" type="button">Approve trip</button><button id="deleteTripBtn" class="text-btn danger owner-only" type="button">Delete</button></div>
       </div>
     </dialog>
