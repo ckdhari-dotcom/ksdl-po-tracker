@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#124e45" />
+    <title>KSDL Trips & Dispatch</title>
+    <link rel="stylesheet" href="logistics.css" />
+  </head>
+  <body>
+    <section id="loginScreen" class="login-screen hidden">
+      <form id="loginForm" class="login-card">
+        <span class="eyebrow">KSDL DISTRIBUTION</span>
+        <h1>Trips &amp; Dispatch</h1>
+        <p>Sign in with your authorised business email.</p>
+        <label>Email<input id="emailInput" type="email" autocomplete="username" required autofocus /></label>
+        <label>Password<input id="passwordInput" type="password" autocomplete="current-password" required /></label>
+        <p id="loginError" class="error" aria-live="polite"></p>
+        <button>Sign in</button>
+      </form>
+    </section>
+
+    <main id="app" class="app-shell hidden">
+      <header class="topbar">
+        <div><span class="eyebrow">KSDL DISTRIBUTION</span><h1>Trips &amp; Dispatch</h1></div>
+        <div class="top-actions">
+          <a class="nav-link" href="./">PO Tracker</a>
+          <span id="roleBadge" class="role-badge">Loading…</span>
+          <button id="signOutBtn" class="text-btn" type="button">Sign out</button>
+          <button id="newTripBtn" class="primary" type="button">+ New trip</button>
+        </div>
+      </header>
+
+      <p id="syncMessage" class="sync-message" aria-live="polite"></p>
+
+      <section class="summary-grid" aria-label="Logistics summary">
+        <article><span>Open trips</span><strong id="openTrips">0</strong><small>Planning, approved or dispatched</small></article>
+        <article class="attention"><span>Awaiting approval</span><strong id="awaitingTrips">0</strong><small>Owner action required</small></article>
+        <article class="owner-only"><span>This month’s cost</span><strong id="monthCost">₹0</strong><small>Actual trip cost</small></article>
+        <article class="owner-only"><span>Cost vs PO value</span><strong id="costPercent">0%</strong><small>This month’s linked POs</small></article>
+      </section>
+
+      <section class="toolbar">
+        <label class="search"><span>⌕</span><input id="searchInput" placeholder="Search trip, vehicle, driver or PO" /></label>
+        <select id="statusFilter" aria-label="Filter by trip status">
+          <option value="">All trip statuses</option>
+          <option>Planning</option><option>Awaiting Approval</option><option>Approved</option><option>Dispatched</option><option>Delivered</option><option>Cancelled</option>
+        </select>
+        <button id="refreshBtn" type="button">Refresh</button>
+      </section>
+
+      <section class="table-card">
+        <div class="table-title"><div><h2>Delivery trips</h2><p id="resultCount">0 trips</p></div></div>
+        <div class="table-wrap"><table><thead><tr>
+          <th>Trip</th><th>Vehicle / driver</th><th>Linked POs &amp; locations</th><th>Status</th><th class="owner-only">Quote / approved</th><th>Actual cost</th><th></th>
+        </tr></thead><tbody id="tripTableBody"></tbody></table></div>
+        <div id="emptyState" class="empty-state hidden"><h3>No delivery trips yet</h3><p>Create one trip and attach the POs travelling in that tempo.</p><button id="emptyNewBtn" class="primary" type="button">+ Create first trip</button></div>
+      </section>
+    </main>
+
+    <dialog id="tripDialog" class="trip-dialog">
+      <form id="tripForm" method="dialog">
+        <div class="dialog-head"><div><span class="eyebrow">LOCAL TEMPO CONTROL</span><h2 id="tripDialogTitle">New delivery trip</h2></div><button class="close-btn" type="button" data-close="tripDialog" aria-label="Close">×</button></div>
+        <input id="tripId" type="hidden" />
+        <div class="form-grid">
+          <label>Trip date<input id="tripDate" type="date" required /></label>
+          <label>Transporter / tempo owner<input id="transporter" placeholder="e.g. Mahesh Tempo" /></label>
+          <label>Vehicle number<input id="vehicleNumber" placeholder="GJ-01-AB-1234" /></label>
+          <label>Driver name<input id="driverName" placeholder="Driver name" /></label>
+          <label>Driver phone<input id="driverPhone" inputmode="tel" placeholder="10 digit mobile" /></label>
+          <label>Trip status<select id="tripStatus"><option>Planning</option><option>Awaiting Approval</option><option>Approved</option><option>Dispatched</option><option>Delivered</option><option>Cancelled</option></select></label>
+        </div>
+
+        <section class="cost-panel">
+          <h3>Trip cost</h3>
+          <div class="form-grid">
+            <label class="owner-cost">Quoted freight<input id="quotedCost" type="number" min="0" step="0.01" value="0" /></label>
+            <label class="owner-cost">Approved freight<input id="approvedCost" type="number" min="0" step="0.01" placeholder="Owner only" /></label>
+            <label>Actual freight<input id="actualFreight" type="number" min="0" step="0.01" value="0" /></label>
+            <label>Loading / unloading<input id="loadingCost" type="number" min="0" step="0.01" value="0" /></label>
+            <label>Parking / toll<input id="parkingToll" type="number" min="0" step="0.01" value="0" /></label>
+            <label>Other cost<input id="otherCost" type="number" min="0" step="0.01" value="0" /></label>
+          </div>
+          <div class="cost-total">Total actual trip cost <strong id="totalActual">₹0</strong></div>
+        </section>
+
+        <section class="po-panel">
+          <div class="section-heading"><div><h3>POs travelling in this trip</h3><p>Select every PO loaded in this tempo.</p></div><label>Cost allocation<select id="allocationMethod"><option value="Equal">Equal split</option><option value="PO Value">By PO value</option></select></label></div>
+          <input id="poSearch" class="po-search" placeholder="Search open PO, customer or location" />
+          <div id="poChecklist" class="po-checklist"></div>
+          <p id="allocationPreview" class="allocation-preview">Select POs to see the cost allocation.</p>
+        </section>
+
+        <label class="remarks-label">Remarks<textarea id="tripRemarks" rows="3" placeholder="Route, delivery instruction, payment note…"></textarea></label>
+        <p id="tripError" class="error" aria-live="polite"></p>
+        <div class="dialog-actions"><button type="button" class="text-btn" data-close="tripDialog">Cancel</button><button id="saveTripBtn" class="primary" value="default">Save trip</button></div>
+      </form>
+    </dialog>
+
+    <dialog id="viewDialog" class="trip-dialog view-dialog">
+      <div>
+        <div class="dialog-head"><div><span class="eyebrow">TRIP DETAIL</span><h2 id="viewTripTitle">Delivery trip</h2></div><button class="close-btn" type="button" data-close="viewDialog" aria-label="Close">×</button></div>
+        <div id="viewTripBody"></div>
+        <div class="dialog-actions"><button id="editTripBtn" class="primary" type="button">Edit trip</button><button id="approveTripBtn" class="primary approval-btn owner-only" type="button">Approve trip</button><button id="deleteTripBtn" class="text-btn danger owner-only" type="button">Delete</button></div>
+      </div>
+    </dialog>
+
+    <script src="config.js"></script>
+    <script src="logistics.js"></script>
+  </body>
+</html>
