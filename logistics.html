@@ -7,7 +7,7 @@
     <title>KSDL Executive PO View</title>
     <link rel="stylesheet" href="styles.css" />
     <link rel="stylesheet" href="mobile-filters.css" />
-    <link rel="stylesheet" href="logistics.css?v=transport-master-20260722" />
+    <link rel="stylesheet" href="logistics.css?v=delivery-correction-20260722" />
     <style>
       .trip-plan-dialog{width:min(1120px,calc(100% - 24px))}
       .po-detail-heading{margin-top:20px;padding-top:17px;border-top:1px solid var(--line)}
@@ -125,12 +125,12 @@
         <div class="table-wrap"><table class="trip-table"><thead><tr><th>Trip date</th><th>POs / locations</th><th>Tempo / driver</th><th>Invoice</th><th>Status</th><th>Tempo cost</th><th>Action</th></tr></thead><tbody id="inTripBody"></tbody></table></div>
         <div id="tripEmptyState" class="empty-state"><h3>No POs are in a trip</h3><p>Tick POs above and create the first delivery plan.</p></div>
       </section>
-      <p class="footnote">This executive page shows only Received, Scheduled, In Transit and Partially Delivered POs.</p>
+      <p class="footnote">This executive page shows open POs and any delivered PO returned by the owner for correction.</p>
     </main>
 
     <div id="toast" class="toast" role="status"></div>
     <script src="config.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-    <script src="logistics.js?v=transport-master-20260722"></script>
+    <script src="logistics.js?v=delivery-correction-20260722"></script>
   </body>
 </html>

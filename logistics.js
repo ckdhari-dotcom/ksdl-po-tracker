@@ -15,6 +15,7 @@
   }
 
   let session = null;
+  let refreshPromise = null;
   let records = [];
   let trips = [];
   let transporters = [];
@@ -35,12 +36,35 @@
   function show(id) { $(id).classList.remove('hidden'); }
   function hide(id) { $(id).classList.add('hidden'); }
   function headers(extra = {}) { return { apikey: PUBLIC_KEY, Authorization: `Bearer ${session?.access_token || PUBLIC_KEY}`, ...extra }; }
-  async function api(path, options = {}) {
-    const response = await fetch(`${BASE_URL}${path}`, { ...options, headers: headers(options.headers || {}) });
+  function saveSession(nextSession) { session = nextSession; sessionStorage.setItem(SESSION_KEY, JSON.stringify(session)); }
+  function tokenExpiresSoon() {
+    if (!session?.access_token) return false;
+    let expiresAt = Number(session.expires_at || 0);
+    if (!expiresAt) { try { const payload = session.access_token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/'); expiresAt = Number(JSON.parse(atob(payload.padEnd(Math.ceil(payload.length / 4) * 4, '='))).exp || 0); } catch (_) { return false; } }
+    return expiresAt * 1000 <= Date.now() + 60000;
+  }
+  async function refreshSession() {
+    if (refreshPromise) return refreshPromise;
+    if (!session?.refresh_token) throw new Error('Your session has expired. Please sign in again.');
+    refreshPromise = (async () => {
+      const response = await fetch(`${BASE_URL}/auth/v1/token?grant_type=refresh_token`, { method: 'POST', headers: { apikey: PUBLIC_KEY, 'Content-Type': 'application/json' }, body: JSON.stringify({ refresh_token: session.refresh_token }) });
+      const text = await response.text(); let data = null; if (text) { try { data = JSON.parse(text); } catch (_) { data = text; } }
+      if (!response.ok || !data?.access_token) throw new Error(data?.message || data?.error_description || 'Your session has expired. Please sign in again.');
+      saveSession({ ...session, ...data }); return session;
+    })();
+    try { return await refreshPromise; } finally { refreshPromise = null; }
+  }
+  async function api(path, options = {}, allowRefreshRetry = true) {
+    const tokenRequest = path.startsWith('/auth/v1/token');
+    if (!tokenRequest && session?.refresh_token && tokenExpiresSoon()) await refreshSession();
+    const requestHeaders = tokenRequest ? { apikey: PUBLIC_KEY, Authorization: `Bearer ${PUBLIC_KEY}`, ...(options.headers || {}) } : headers(options.headers || {});
+    const response = await fetch(`${BASE_URL}${path}`, { ...options, headers: requestHeaders });
     const text = await response.text();
     let data = null;
     if (text) { try { data = JSON.parse(text); } catch (_) { data = text; } }
-    if (!response.ok) throw new Error(data?.message || data?.error_description || text || `Request failed (${response.status})`);
+    const message = data?.message || data?.error_description || text || `Request failed (${response.status})`;
+    if (!response.ok && allowRefreshRetry && !tokenRequest && session?.refresh_token && (response.status === 401 || /exp(?:ired)?|jwt|timestamp check failed/i.test(String(message)))) { await refreshSession(); return api(path, options, false); }
+    if (!response.ok) throw new Error(message);
     return data;
   }
   function toast(message) {
@@ -49,7 +73,7 @@
   }
   async function signIn(email, password) {
     const data = await api('/auth/v1/token?grant_type=password', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, password }) });
-    session = data; sessionStorage.setItem(SESSION_KEY, JSON.stringify(data));
+    saveSession(data);
   }
   async function signOut() {
     try { if (session?.access_token) await api('/auth/v1/logout', { method: 'POST' }); } catch (_) { /* local sign-out still succeeds */ }
@@ -172,7 +196,7 @@
     $('connectionStatus').textContent = 'Loading POs…';
     const [poResult, tripResult, transporterResult] = await Promise.allSettled([
       api('/rest/v1/purchase_orders?select=*&order=po_received_date.desc'),
-      api('/rest/v1/delivery_trips?select=*,delivery_trip_pos(purchase_order_id,allocated_cost,invoice_number,invoice_date,invoice_attachment_url,delivery_status,purchase_orders(id,po_number,customer_name,delivery_location,status))&order=trip_date.desc,created_at.desc'),
+      api('/rest/v1/delivery_trips?select=*,delivery_trip_pos(purchase_order_id,allocated_cost,invoice_number,invoice_date,invoice_attachment_url,delivery_status,correction_reason,purchase_orders(id,po_number,customer_name,delivery_location,status))&order=trip_date.desc,created_at.desc'),
       api('/rest/v1/transporters?select=id,name,phone,active&active=eq.true&order=name.asc')
     ]);
     if (poResult.status === 'rejected') {
@@ -180,7 +204,7 @@
     }
     records = (Array.isArray(poResult.value) ? poResult.value : []).filter(record => OPEN_STATUSES.includes(record.status));
     tripStorageReady = tripResult.status === 'fulfilled';
-    trips = tripStorageReady && Array.isArray(tripResult.value) ? tripResult.value.filter(trip => !CLOSED_TRIP_STATUSES.includes(trip.status)) : [];
+    trips = tripStorageReady && Array.isArray(tripResult.value) ? tripResult.value.filter(trip => !CLOSED_TRIP_STATUSES.includes(trip.status) || (trip.delivery_trip_pos || []).some(link => link.delivery_status === 'Needs Correction')) : [];
     transporters = transporterResult.status === 'fulfilled' && Array.isArray(transporterResult.value) ? transporterResult.value : [];
     renderTransporterOptions();
     await Promise.all(records.map(async record => {
@@ -265,8 +289,9 @@
     $('tripPoDetails').innerHTML = chosen.map(record => {
       const link = editLinksByPo.get(record.id); const hasInvoice = Boolean(link?.invoice_attachment_url);
       const invoiceStatusText = hasInvoice ? 'Invoice already attached. Upload a file only to replace it.' : 'Select a Tally PDF to auto-fill.';
+      const correction = link?.delivery_status === 'Needs Correction' ? `<span class="correction-note">Owner correction: ${safe(link.correction_reason || 'Please review this delivery.')}</span>` : '';
       return `<tr data-po-id="${record.id}" data-invoice-state="${hasInvoice ? 'existing' : 'idle'}" data-existing-invoice="${safe(link?.invoice_attachment_url || '')}">
-      <td><span class="po-main">${safe(record.po_number)}</span><span class="po-secondary">${safe(record.delivery_location || 'Location pending')}</span></td>
+      <td><span class="po-main">${safe(record.po_number)}</span><span class="po-secondary">${safe(record.delivery_location || 'Location pending')}</span>${correction}</td>
       <td><input class="po-invoice-number" required placeholder="Invoice number" value="${safe(link?.invoice_number || '')}" /></td>
       <td><input class="po-invoice-date" type="date" required value="${safe(link?.invoice_date || '')}" /></td>
       <td><input class="po-invoice-file" type="file" accept="application/pdf,image/*" ${hasInvoice ? '' : 'required'} /><small class="invoice-read-status" data-state="${hasInvoice ? 'matched' : 'idle'}">${invoiceStatusText}</small></td>
@@ -283,10 +308,11 @@
     $('tripCount').textContent = `${trips.length} active trip${trips.length === 1 ? '' : 's'}`;
     $('inTripBody').innerHTML = trips.map(trip => {
       const links = trip.delivery_trip_pos || [];
-      const chips = links.map(link => `<span class="trip-po-chip">${safe(link.purchase_orders?.po_number || 'PO')} · ${safe(link.purchase_orders?.delivery_location || 'Location pending')}</span>`).join('');
+      const correctionLinks = links.filter(link => link.delivery_status === 'Needs Correction'), needsCorrection = correctionLinks.length > 0;
+      const chips = links.map(link => `<span class="trip-po-chip ${link.delivery_status === 'Needs Correction' ? 'needs-correction' : ''}">${safe(link.purchase_orders?.po_number || 'PO')} · ${safe(link.purchase_orders?.delivery_location || 'Location pending')}${link.delivery_status === 'Needs Correction' ? `<small>${safe(link.correction_reason || 'Correction requested')}</small>` : ''}</span>`).join('');
       const invoices = links.map(link => `<div><strong>${safe(link.purchase_orders?.po_number || 'PO')}:</strong> ${safe(link.invoice_number || '—')} · ${money(link.allocated_cost)}</div>`).join('');
       const tempoCost = Number(trip.actual_freight || 0);
-      return `<tr><td>${localDate(trip.trip_date)}</td><td><div class="trip-po-list">${chips || 'No POs linked'}</div></td><td>${safe(trip.vehicle_number || trip.transporter || '—')}<span class="po-secondary">${safe(trip.driver_name || '')}</span></td><td>${invoices || '—'}</td><td><span class="executive-status">${safe(trip.status)}</span></td><td>${tempoCost ? money(tempoCost) : '—'}</td><td><div class="trip-actions"><button class="text-btn edit-trip-btn" type="button" data-trip-id="${trip.id}">Edit</button><button class="complete-trip-btn" type="button" data-trip-id="${trip.id}">Complete delivery</button></div></td></tr>`;
+      return `<tr class="${needsCorrection ? 'correction-trip' : ''}"><td>${localDate(trip.trip_date)}</td><td><div class="trip-po-list">${chips || 'No POs linked'}</div></td><td>${safe(trip.vehicle_number || trip.transporter || '—')}<span class="po-secondary">${safe(trip.driver_name || '')}</span></td><td>${invoices || '—'}</td><td><span class="executive-status ${needsCorrection ? 'needs-correction' : ''}">${needsCorrection ? 'Needs Correction' : safe(trip.status)}</span></td><td>${tempoCost ? money(tempoCost) : '—'}</td><td><div class="trip-actions"><button class="text-btn edit-trip-btn" type="button" data-trip-id="${trip.id}">Edit</button><button class="complete-trip-btn" type="button" data-trip-id="${trip.id}">${needsCorrection ? 'Correct delivery' : 'Complete delivery'}</button></div></td></tr>`;
     }).join('');
     $('tripEmptyState').classList.toggle('hidden', trips.length !== 0);
   }
@@ -353,13 +379,14 @@
   }
   function openCompleteTrip(tripId) {
     const trip = trips.find(item => item.id === tripId); if (!trip) return;
-    const incompleteInvoice = (trip.delivery_trip_pos || []).find(link => !(link.invoice_number || trip.invoice_number) || !(link.invoice_date || trip.invoice_date) || !(link.invoice_attachment_url || trip.invoice_attachment_url));
+    const correctionLinks = (trip.delivery_trip_pos || []).filter(link => link.delivery_status === 'Needs Correction');
+    const links = correctionLinks.length ? correctionLinks : (trip.delivery_trip_pos || []);
+    const incompleteInvoice = links.find(link => !(link.invoice_number || trip.invoice_number) || !(link.invoice_date || trip.invoice_date) || !(link.invoice_attachment_url || trip.invoice_attachment_url));
     if (incompleteInvoice) { toast(`Edit trip and complete the invoice details for PO ${incompleteInvoice.purchase_orders?.po_number || ''}.`); return; }
     completingTripId = tripId; $('completeTripForm').reset(); $('completeTripError').textContent = '';
-    const links = trip.delivery_trip_pos || [];
-    $('completeTripSummary').textContent = `${links.length} PO${links.length === 1 ? '' : 's'} in this trip — complete each delivery separately.`;
+    $('completeTripSummary').textContent = correctionLinks.length ? `${links.length} PO${links.length === 1 ? '' : 's'} returned by the owner — upload the corrected delivery slip and final cost.` : `${links.length} PO${links.length === 1 ? '' : 's'} in this trip — complete each delivery separately.`;
     $('completeTripPoDetails').innerHTML = links.map(link => `<tr data-po-id="${link.purchase_order_id}">
-      <td><span class="po-main">${safe(link.purchase_orders?.po_number || 'PO')}</span><span class="po-secondary">${safe(link.purchase_orders?.delivery_location || 'Location pending')}</span></td>
+      <td><span class="po-main">${safe(link.purchase_orders?.po_number || 'PO')}</span><span class="po-secondary">${safe(link.purchase_orders?.delivery_location || 'Location pending')}</span>${link.delivery_status === 'Needs Correction' ? `<span class="correction-note">Owner correction: ${safe(link.correction_reason || 'Please review this delivery.')}</span>` : ''}</td>
       <td><input class="complete-po-cost" type="number" min="0" step="0.01" placeholder="0" value="${Number(link.allocated_cost || 0) || ''}" /></td>
       <td><input class="complete-po-slip" type="file" accept="application/pdf,image/jpeg,image/png" required /></td>
     </tr>`).join('');
@@ -377,7 +404,8 @@
       button.disabled = true; button.textContent = 'Completing delivery…';
       const deliveries = await Promise.all(details.map(async detail => ({ purchase_order_id: detail.poId, note_path: await uploadTripDeliverySlip(trip.id, detail.poId, detail.slip), final_cost: detail.finalCost })));
       await api('/rest/v1/rpc/complete_delivery_trip', { method: 'POST', headers: { 'Content-Type': 'application/json', Prefer: 'return=minimal' }, body: JSON.stringify({ trip: trip.id, deliveries }) });
-      closeCompleteTripDialog(); await loadData(); toast('Delivery completed — linked POs updated in the owner tracker.');
+      const corrected = (trip.delivery_trip_pos || []).some(link => link.delivery_status === 'Needs Correction');
+      closeCompleteTripDialog(); await loadData(); toast(corrected ? 'Corrected delivery resubmitted to the owner.' : 'Delivery completed — linked POs updated in the owner tracker.');
     } catch (err) { error.textContent = err.message || 'Could not complete the delivery.'; }
     finally { button.disabled = false; button.textContent = 'Complete delivery'; }
   }
@@ -408,6 +436,6 @@
 
   bindEvents(); toggleCustomDates();
   try { session = JSON.parse(sessionStorage.getItem(SESSION_KEY) || 'null'); } catch (_) { session = null; }
-  if (session?.access_token && (!session.expires_at || session.expires_at * 1000 > Date.now() + 30000)) start();
+  if (session?.access_token && session?.refresh_token) start().catch(error => { hide('app'); show('loginScreen'); $('loginError').textContent = error.message || 'Please sign in again.'; });
   else { sessionStorage.removeItem(SESSION_KEY); show('loginScreen'); }
 })();
