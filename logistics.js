@@ -58,11 +58,11 @@
     const data = await api(`/storage/v1/object/sign/${NOTE_BUCKET}/${path}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ expiresIn: 3600 }) });
     return data?.signedURL ? `${BASE_URL}/storage/v1${data.signedURL}` : '';
   }
-  async function uploadTripInvoice(tripId, file) {
+  async function uploadTripInvoice(tripId, poId, file) {
     if (!file) throw new Error('Attach the invoice copy before creating the trip.');
     if (file.size > 10 * 1024 * 1024) throw new Error('Invoice copy must be 10 MB or smaller.');
     const fileName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
-    const path = `trip-invoices/${tripId}/${Date.now()}-${fileName}`;
+    const path = `trip-invoices/${tripId}/${poId}/${Date.now()}-${fileName}`;
     await api(`/storage/v1/object/${NOTE_BUCKET}/${path}`, { method: 'POST', headers: { 'Content-Type': file.type || 'application/octet-stream', 'x-upsert': 'true' }, body: file });
     return path;
   }
@@ -71,7 +71,7 @@
     $('connectionStatus').textContent = 'Loading POs…';
     const [poResult, tripResult] = await Promise.allSettled([
       api('/rest/v1/purchase_orders?select=*&order=po_received_date.desc'),
-      api('/rest/v1/delivery_trips?select=*,delivery_trip_pos(purchase_order_id,allocated_cost,purchase_orders(id,po_number,customer_name,delivery_location,status))&order=trip_date.desc,created_at.desc')
+      api('/rest/v1/delivery_trips?select=*,delivery_trip_pos(purchase_order_id,allocated_cost,invoice_number,invoice_date,invoice_attachment_url,delivery_status,purchase_orders(id,po_number,customer_name,delivery_location,status))&order=trip_date.desc,created_at.desc')
     ]);
     if (poResult.status === 'rejected') {
       records = []; trips = []; render(); $('connectionStatus').textContent = 'Could not load POs'; toast(poResult.reason?.message || 'Could not load POs'); return;
@@ -145,17 +145,36 @@
   function renderPlan() {
     const chosen = records.filter(record => selectedPoIds.has(record.id));
     $('selectedPoSummary').textContent = chosen.length ? `${chosen.length} PO${chosen.length === 1 ? '' : 's'} selected: ${chosen.map(record => record.po_number).join(', ')}` : 'Tick POs above to plan one delivery trip.';
+    $('tripPoDetails').innerHTML = chosen.map(record => `<tr data-po-id="${record.id}">
+      <td><span class="po-main">${safe(record.po_number)}</span><span class="po-secondary">${safe(record.delivery_location || 'Location pending')}</span></td>
+      <td><input class="po-invoice-number" required placeholder="Invoice number" /></td>
+      <td><input class="po-invoice-date" type="date" required /></td>
+      <td><input class="po-invoice-file" type="file" accept="application/pdf,image/*" required /></td>
+      <td><input class="po-allocated-cost" type="number" min="0" step="0.01" value="0" required /></td>
+    </tr>`).join('');
     $('openTripDialogBtn').disabled = chosen.length === 0;
     $('openTripDialogBtn').textContent = `Create new trip (${chosen.length})`;
     $('createTripBtn').disabled = chosen.length === 0;
     $('createTripBtn').textContent = `Create trip with ${chosen.length} PO${chosen.length === 1 ? '' : 's'}`;
+    updateCostSummary();
+  }
+  function updateCostSummary() {
+    const totalTripCost = Number($('tripFreight').value || 0) + Number($('tripLoadingCost').value || 0) + Number($('tripTollCost').value || 0) + Number($('tripOtherCost').value || 0);
+    const allocated = [...document.querySelectorAll('.po-allocated-cost')].reduce((sum, input) => sum + Number(input.value || 0), 0);
+    const difference = allocated - totalTripCost;
+    $('totalTripCost').textContent = money(totalTripCost); $('allocatedPoCost').textContent = money(allocated);
+    $('allocationDifference').textContent = `Difference ${money(Math.abs(difference))}${difference > 0 ? ' over' : difference < 0 ? ' short' : ''}`;
+    $('allocationDifference').className = Math.abs(difference) < 0.5 ? 'cost-balanced' : 'cost-mismatch';
+    return { totalTripCost, allocated, difference };
   }
   function renderTrips() {
     $('tripCount').textContent = `${trips.length} active trip${trips.length === 1 ? '' : 's'}`;
     $('inTripBody').innerHTML = trips.map(trip => {
       const links = trip.delivery_trip_pos || [];
       const chips = links.map(link => `<span class="trip-po-chip">${safe(link.purchase_orders?.po_number || 'PO')} · ${safe(link.purchase_orders?.delivery_location || 'Location pending')}</span>`).join('');
-      return `<tr><td>${localDate(trip.trip_date)}</td><td><div class="trip-po-list">${chips || 'No POs linked'}</div></td><td>${safe(trip.vehicle_number || trip.transporter || '—')}<span class="po-secondary">${safe(trip.driver_name || '')}</span></td><td>${safe(trip.invoice_number || '—')}<span class="po-secondary">${localDate(trip.invoice_date)}</span></td><td><span class="executive-status">${safe(trip.status)}</span></td><td>${money(trip.actual_freight || trip.quoted_cost)}</td></tr>`;
+      const invoices = links.map(link => `<div><strong>${safe(link.purchase_orders?.po_number || 'PO')}:</strong> ${safe(link.invoice_number || '—')} · ${money(link.allocated_cost)}</div>`).join('');
+      const totalCost = Number(trip.actual_freight || 0) + Number(trip.loading_cost || 0) + Number(trip.parking_toll || 0) + Number(trip.other_cost || 0);
+      return `<tr><td>${localDate(trip.trip_date)}</td><td><div class="trip-po-list">${chips || 'No POs linked'}</div></td><td>${safe(trip.vehicle_number || trip.transporter || '—')}<span class="po-secondary">${safe(trip.driver_name || '')}</span></td><td>${invoices || '—'}</td><td><span class="executive-status">${safe(trip.status)}</span></td><td>${money(totalCost)}</td></tr>`;
     }).join('');
     $('tripEmptyState').classList.toggle('hidden', trips.length !== 0);
   }
@@ -166,18 +185,24 @@
     const chosen = records.filter(record => selectedPoIds.has(record.id));
     if (!chosen.length) { error.textContent = 'Select at least one PO first.'; return; }
     if (!tripStorageReady) { error.textContent = 'Trip database setup is not ready. Run logistics-supabase.sql once in Supabase.'; return; }
+    const costCheck = updateCostSummary();
+    if (Math.abs(costCheck.difference) >= 0.5) { error.textContent = 'PO-wise allocated costs must equal the total trip cost.'; return; }
     try {
       const button = $('createTripBtn'); button.disabled = true; button.textContent = 'Creating trip…';
       const freight = Number($('tripFreight').value || 0), tripId = crypto.randomUUID();
-      const invoicePath = await uploadTripInvoice(tripId, $('tripInvoiceCopy').files[0]);
-      const payload = { id: tripId, trip_date: $('tripDate').value, status: 'Planning', transporter: $('tripTransporter').value.trim(), vehicle_number: $('tripVehicle').value.trim() || null, driver_name: $('tripDriver').value.trim() || null, driver_phone: $('tripDriverPhone').value.trim() || null, invoice_number: $('tripInvoice').value.trim() || null, invoice_date: $('tripInvoiceDate').value || null, invoice_attachment_url: invoicePath, quoted_cost: freight, actual_freight: freight };
+      const details = chosen.map(record => {
+        const row = $('tripPoDetails').querySelector(`tr[data-po-id="${record.id}"]`);
+        return { record, invoiceNumber: row.querySelector('.po-invoice-number').value.trim(), invoiceDate: row.querySelector('.po-invoice-date').value, invoiceFile: row.querySelector('.po-invoice-file').files[0], allocatedCost: Number(row.querySelector('.po-allocated-cost').value || 0) };
+      });
+      for (const detail of details) if (!detail.invoiceNumber || !detail.invoiceDate || !detail.invoiceFile) throw new Error(`Complete invoice details for PO ${detail.record.po_number}.`);
+      await Promise.all(details.map(async detail => { detail.invoicePath = await uploadTripInvoice(tripId, detail.record.id, detail.invoiceFile); }));
+      const payload = { id: tripId, trip_date: $('tripDate').value, status: 'Planning', transporter: $('tripTransporter').value.trim(), vehicle_number: $('tripVehicle').value.trim() || null, driver_name: $('tripDriver').value.trim() || null, driver_phone: $('tripDriverPhone').value.trim() || null, quoted_cost: freight, actual_freight: freight, loading_cost: Number($('tripLoadingCost').value || 0), parking_toll: Number($('tripTollCost').value || 0), other_cost: Number($('tripOtherCost').value || 0) };
       await api('/rest/v1/delivery_trips', { method: 'POST', headers: { 'Content-Type': 'application/json', Prefer: 'return=minimal' }, body: JSON.stringify(payload) });
-      const allocated = chosen.length ? freight / chosen.length : 0;
-      const links = chosen.map(record => ({ trip_id: tripId, purchase_order_id: record.id, allocation_method: 'Equal', allocated_cost: allocated }));
+      const links = details.map(detail => ({ trip_id: tripId, purchase_order_id: detail.record.id, allocation_method: 'Manual', allocated_cost: detail.allocatedCost, invoice_number: detail.invoiceNumber, invoice_date: detail.invoiceDate, invoice_attachment_url: detail.invoicePath, delivery_status: 'Pending' }));
       await api('/rest/v1/delivery_trip_pos', { method: 'POST', headers: { 'Content-Type': 'application/json', Prefer: 'return=minimal' }, body: JSON.stringify(links) });
       selectedPoIds.clear(); $('tripPlanDialog').close(); $('tripPlanForm').reset(); $('tripDate').value = today(); await loadData(); toast('Trip created — selected POs moved to POs in trip.');
     } catch (err) { error.textContent = err.message || 'Could not create the trip.'; }
-    finally { $('createTripBtn').disabled = selectedPoIds.size === 0; renderPlan(); }
+    finally { $('createTripBtn').disabled = selectedPoIds.size === 0; $('createTripBtn').textContent = `Create trip with ${selectedPoIds.size} PO${selectedPoIds.size === 1 ? '' : 's'}`; }
   }
 
   function toggleCustomDates() { $('customDateFilters').classList.toggle('hidden', $('dateRangeFilter').value !== 'custom'); }
@@ -187,6 +212,8 @@
     $('signOutBtn').addEventListener('click', signOut); $('refreshBtn').addEventListener('click', loadData); $('clearFilters').addEventListener('click', clearFilters); $('tripPlanForm').addEventListener('submit', createTrip);
     $('openTripDialogBtn').addEventListener('click', () => { if (!selectedPoIds.size) return; $('tripPlanError').textContent = ''; renderPlan(); $('tripPlanDialog').showModal(); });
     $('closeTripDialogBtn').addEventListener('click', () => $('tripPlanDialog').close()); $('cancelTripBtn').addEventListener('click', () => $('tripPlanDialog').close());
+    ['tripFreight', 'tripLoadingCost', 'tripTollCost', 'tripOtherCost'].forEach(id => $(id).addEventListener('input', updateCostSummary));
+    $('tripPoDetails').addEventListener('input', event => { if (event.target.matches('.po-allocated-cost')) updateCostSummary(); });
     ['searchInput', 'statusFilter', 'dateFrom', 'dateTo'].forEach(id => { $(id).addEventListener('input', render); $(id).addEventListener('change', render); });
     $('dateRangeFilter').addEventListener('change', () => { toggleCustomDates(); render(); });
     $('poTableBody').addEventListener('change', event => { if (!event.target.matches('.po-choice')) return; if (event.target.checked) selectedPoIds.add(event.target.value); else selectedPoIds.delete(event.target.value); render(); });

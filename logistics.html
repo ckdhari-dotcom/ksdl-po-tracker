@@ -7,7 +7,19 @@
     <title>KSDL Executive PO View</title>
     <link rel="stylesheet" href="styles.css" />
     <link rel="stylesheet" href="mobile-filters.css" />
-    <link rel="stylesheet" href="logistics.css?v=step2-20260722" />
+    <link rel="stylesheet" href="logistics.css?v=step4-20260722" />
+    <style>
+      .trip-plan-dialog{width:min(1120px,calc(100% - 24px))}
+      .po-detail-heading{margin-top:20px;padding-top:17px;border-top:1px solid var(--line)}
+      .po-detail-heading p{margin:4px 0 10px;color:var(--muted);font-size:.82rem}
+      .po-detail-wrap{overflow:auto;border:1px solid var(--line);border-radius:9px}
+      .po-detail-table{width:100%;min-width:900px;border-collapse:collapse}
+      .po-detail-table th,.po-detail-table td{padding:9px;border-top:1px solid var(--line);vertical-align:top}
+      .po-detail-table input{width:100%;min-width:120px}
+      .cost-check{display:flex;gap:12px;flex-wrap:wrap;margin-top:12px;padding:11px;background:#f3f8f6;border-radius:9px}
+      .cost-check span{color:var(--muted);font-size:.82rem}.cost-check strong{color:var(--ink)}
+      .cost-check .cost-mismatch{color:#b42318;font-weight:800}.cost-check .cost-balanced{color:var(--green);font-weight:800}
+    </style>
   </head>
   <body>
     <section id="loginScreen" class="login-screen hidden">
@@ -88,11 +100,14 @@
             <label>Vehicle number<input id="tripVehicle" placeholder="GJ-01-AB-1234" /></label>
             <label>Driver name<input id="tripDriver" /></label>
             <label>Driver phone<input id="tripDriverPhone" inputmode="tel" /></label>
-            <label>Invoice number<input id="tripInvoice" /></label>
-            <label>Invoice date<input id="tripInvoiceDate" type="date" /></label>
-            <label>Invoice copy*<input id="tripInvoiceCopy" type="file" accept="application/pdf,image/*" required /></label>
-            <label>Estimated freight (₹)<input id="tripFreight" type="number" min="0" step="0.01" value="0" /></label>
+            <label>Vehicle / tempo cost (₹)*<input id="tripFreight" type="number" min="0" step="0.01" value="0" required /></label>
+            <label>Loading / unloading (₹)<input id="tripLoadingCost" type="number" min="0" step="0.01" value="0" /></label>
+            <label>Toll / parking (₹)<input id="tripTollCost" type="number" min="0" step="0.01" value="0" /></label>
+            <label>Other cost (₹)<input id="tripOtherCost" type="number" min="0" step="0.01" value="0" /></label>
           </div>
+          <div class="po-detail-heading"><div><h3>Invoice and delivery cost for each PO</h3><p>Upload each invoice separately and enter the cost allocated to that delivery.</p></div></div>
+          <div class="po-detail-wrap"><table class="po-detail-table"><thead><tr><th>PO / location</th><th>Invoice number*</th><th>Invoice date*</th><th>Invoice copy*</th><th>Allocated cost (₹)*</th></tr></thead><tbody id="tripPoDetails"></tbody></table></div>
+          <div class="cost-check"><span>Total trip cost <strong id="totalTripCost">₹0</strong></span><span>Allocated to POs <strong id="allocatedPoCost">₹0</strong></span><span id="allocationDifference">Difference ₹0</span></div>
           <p id="tripPlanError" class="error" aria-live="polite"></p>
           <div class="plan-actions"><button id="cancelTripBtn" type="button">Cancel</button><button id="createTripBtn" class="primary" disabled>Create trip with 0 POs</button></div>
         </form>
@@ -108,6 +123,6 @@
 
     <div id="toast" class="toast" role="status"></div>
     <script src="config.js"></script>
-    <script src="logistics.js?v=step3-20260722"></script>
+    <script src="logistics.js?v=step4-20260722"></script>
   </body>
 </html>
