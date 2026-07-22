@@ -6,6 +6,11 @@
     <meta name="theme-color" content="#124e45" />
     <title>KSDL Trips & Dispatch</title>
     <link rel="stylesheet" href="logistics.css" />
+    <style>
+      .trip-composer { margin: 0 auto 18px; background: #fff; border: 1px solid #dce8e4; }
+      .selected-po-summary { margin: 5px 0 0; color: #62736f; font-size: .85rem; }
+      @media (max-width: 760px) { .trip-composer { width: 100%; } }
+    </style>
   </head>
   <body>
     <section id="loginScreen" class="login-screen hidden">
@@ -39,6 +44,7 @@
         <div class="table-wrap"><table><thead><tr><th></th><th>PO / Customer</th><th>Location</th><th>Dates</th><th>Status / review</th><th>Value</th><th>Invoice</th><th>Transport</th><th>Remarks</th><th></th></tr></thead><tbody id="readyPoBody"></tbody></table></div>
         <div id="readyPoEmpty" class="empty-state hidden"><h3>No open POs are waiting</h3><p>All available POs have been planned into a trip, or there are no new POs yet.</p></div>
       </section>
+      <div id="executiveTripHost"></div>
 
       <section class="summary-grid" aria-label="Logistics summary">
         <article><span>Open trips</span><strong id="openTrips">0</strong><small>Planning, approved or dispatched</small></article>
@@ -65,9 +71,9 @@
       </section>
     </main>
 
-    <dialog id="tripDialog" class="trip-dialog">
-      <form id="tripForm" method="dialog">
-        <div class="dialog-head"><div><span class="eyebrow">LOCAL TEMPO CONTROL</span><h2 id="tripDialogTitle">New delivery trip</h2></div><button class="close-btn" type="button" data-close="tripDialog" aria-label="Close">×</button></div>
+    <section id="tripComposer" class="trip-dialog trip-composer hidden">
+      <form id="tripForm">
+        <div class="dialog-head"><div><span class="eyebrow">CREATE TRIP / DISPATCH</span><h2 id="tripDialogTitle">Selected POs for one tempo trip</h2><p id="selectedTripPoSummary" class="selected-po-summary">Select POs above to begin.</p></div><button class="close-btn" type="button" data-hide-trip aria-label="Close">×</button></div>
         <input id="tripId" type="hidden" />
         <div class="form-grid">
           <label>Trip date<input id="tripDate" type="date" required /></label>
@@ -103,9 +109,9 @@
 
         <label class="remarks-label">Remarks<textarea id="tripRemarks" rows="3" placeholder="Route, delivery instruction, payment note…"></textarea></label>
         <p id="tripError" class="error" aria-live="polite"></p>
-        <div class="dialog-actions"><button type="button" class="text-btn" data-close="tripDialog">Cancel</button><button id="saveTripBtn" class="primary" value="default">Save trip</button></div>
+        <div class="dialog-actions"><button type="button" class="text-btn" data-hide-trip>Cancel</button><button id="saveTripBtn" class="primary">Save trip</button></div>
       </form>
-    </dialog>
+    </section>
 
     <dialog id="manualPoDialog" class="trip-dialog">
       <form id="manualPoForm" method="dialog">

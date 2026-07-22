@@ -54,6 +54,7 @@
     if (!['owner', 'executive'].includes(role)) throw new Error('This email is not authorised for KSDL Trips & Dispatch.');
     $('roleBadge').textContent = role === 'owner' ? 'Owner view' : 'Dispatch executive';
     setOwnerVisibility();
+    if (!isOwner()) { $('executiveTripHost').append($('tripComposer')); show('tripComposer'); $('tripDate').value = today(); setStatusOptions('Planning'); }
   }
   async function loadData() {
     setMessage('Refreshing trips…');
@@ -150,9 +151,10 @@
   }
   function updateAllocationPreview() {
     const ids = getSelectedIds(); const total = number($('actualFreight').value) + number($('loadingCost').value) + number($('parkingToll').value) + number($('otherCost').value);
-    if (!ids.length) { $('allocationPreview').textContent = 'Select POs to see the cost allocation.'; return; }
+    if (!ids.length) { $('allocationPreview').textContent = 'Select POs to see the cost allocation.'; $('selectedTripPoSummary').textContent = 'Select POs from the list above, or use the checklist below.'; return; }
     const rows = purchaseOrders.filter(po => ids.includes(po.id)); const byValue = $('allocationMethod').value === 'PO Value'; const valueTotal = rows.reduce((sum, po) => sum + number(po.po_value), 0);
     const detail = rows.map(po => { const allocated = byValue && valueTotal ? total * number(po.po_value) / valueTotal : total / rows.length; return `${po.po_number}: ${money(allocated)}`; }).join(' · ');
+    $('selectedTripPoSummary').textContent = `${rows.length} PO${rows.length === 1 ? '' : 's'} selected: ${rows.map(po => po.po_number).join(', ')}`;
     $('allocationPreview').textContent = `Total ${money(total)} will be allocated — ${detail}`;
   }
   function refreshTotal() { $('totalActual').textContent = money(number($('actualFreight').value) + number($('loadingCost').value) + number($('parkingToll').value) + number($('otherCost').value)); updateAllocationPreview(); }
@@ -170,7 +172,9 @@
     $('loadingCost').value = trip?.loading_cost ?? 0; $('parkingToll').value = trip?.parking_toll ?? 0; $('otherCost').value = trip?.other_cost ?? 0; $('tripRemarks').value = trip?.remarks || '';
     document.querySelectorAll('.owner-cost').forEach(el => el.classList.toggle('hidden', !isOwner()));
     const linked = trip ? (trip.delivery_trip_pos || []).map(link => link.purchase_order_id) : initialSelected;
-    renderChecklist(linked); refreshTotal(); $('tripDialog').showModal();
+    const selectedLabels = purchaseOrders.filter(po => linked.includes(po.id)).map(po => po.po_number);
+    $('selectedTripPoSummary').textContent = selectedLabels.length ? `${selectedLabels.length} PO${selectedLabels.length === 1 ? '' : 's'} selected: ${selectedLabels.join(', ')}` : 'Select POs from the list above, or use the checklist below.';
+    renderChecklist(linked); refreshTotal(); show('tripComposer'); $('tripComposer').scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
   async function saveTrip(event) {
     event.preventDefault();
@@ -195,7 +199,7 @@
       const chosen = purchaseOrders.filter(po => selected.includes(po.id)); const total = totalActual(formData); const method = $('allocationMethod').value; const poValueTotal = chosen.reduce((sum, po) => sum + number(po.po_value), 0);
       const links = chosen.map(po => ({ trip_id: tripId, purchase_order_id: po.id, allocation_method: method, allocated_cost: method === 'PO Value' && poValueTotal ? total * number(po.po_value) / poValueTotal : total / chosen.length }));
       await api('/rest/v1/delivery_trip_pos', { method: 'POST', headers: { 'Content-Type': 'application/json', Prefer: 'return=minimal' }, body: JSON.stringify(links) });
-      selectedOpenPoIds.clear(); $('tripDialog').close(); await loadData(); setMessage('Trip saved successfully.');
+      selectedOpenPoIds.clear(); hide('tripComposer'); await loadData(); setMessage('Trip saved successfully.');
     } catch (err) { error.textContent = err.message || 'Could not save this trip.'; }
     finally { $('saveTripBtn').disabled = false; $('saveTripBtn').textContent = 'Save trip'; }
   }
@@ -315,7 +319,7 @@
     $('refreshBtn').addEventListener('click', () => loadData().catch(err => setMessage(err.message, true))); $('searchInput').addEventListener('input', render); $('statusFilter').addEventListener('change', render);
     $('tripForm').addEventListener('submit', saveTrip); $('manualPoForm').addEventListener('submit', saveManualPo); $('poSearch').addEventListener('input', () => renderChecklist(getSelectedIds())); $('allocationMethod').addEventListener('change', updateAllocationPreview);
     ['actualFreight', 'loadingCost', 'parkingToll', 'otherCost'].forEach(id => $(id).addEventListener('input', refreshTotal));
-    document.addEventListener('click', event => { const closer = event.target.closest('[data-close]'); if (closer) $(closer.dataset.close).close(); const view = event.target.closest('.view-trip'); if (view) openTripView(view.dataset.id); const correction = event.target.closest('.correct-manual-po'); if (correction) openManualPoForm(purchaseOrders.find(po => po.id === correction.dataset.id)); });
+    document.addEventListener('click', event => { const closer = event.target.closest('[data-close]'); if (closer) $(closer.dataset.close).close(); if (event.target.closest('[data-hide-trip]')) hide('tripComposer'); const view = event.target.closest('.view-trip'); if (view) openTripView(view.dataset.id); const correction = event.target.closest('.correct-manual-po'); if (correction) openManualPoForm(purchaseOrders.find(po => po.id === correction.dataset.id)); });
     document.addEventListener('change', event => { if (!event.target.matches('.open-po-choice')) return; if (event.target.checked) selectedOpenPoIds.add(event.target.value); else selectedOpenPoIds.delete(event.target.value); renderReadyPos(); });
     $('editTripBtn').addEventListener('click', () => { $('viewDialog').close(); openTripForm(activeTrip); }); $('approveTripBtn').addEventListener('click', approveActiveTrip); $('deleteTripBtn').addEventListener('click', deleteActiveTrip); $('completeTripBtn').addEventListener('click', completeActiveTrip);
   }
