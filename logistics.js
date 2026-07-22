@@ -145,6 +145,8 @@
   function renderPlan() {
     const chosen = records.filter(record => selectedPoIds.has(record.id));
     $('selectedPoSummary').textContent = chosen.length ? `${chosen.length} PO${chosen.length === 1 ? '' : 's'} selected: ${chosen.map(record => record.po_number).join(', ')}` : 'Tick POs above to plan one delivery trip.';
+    $('openTripDialogBtn').disabled = chosen.length === 0;
+    $('openTripDialogBtn').textContent = `Create new trip (${chosen.length})`;
     $('createTripBtn').disabled = chosen.length === 0;
     $('createTripBtn').textContent = `Create trip with ${chosen.length} PO${chosen.length === 1 ? '' : 's'}`;
   }
@@ -173,7 +175,7 @@
       const allocated = chosen.length ? freight / chosen.length : 0;
       const links = chosen.map(record => ({ trip_id: tripId, purchase_order_id: record.id, allocation_method: 'Equal', allocated_cost: allocated }));
       await api('/rest/v1/delivery_trip_pos', { method: 'POST', headers: { 'Content-Type': 'application/json', Prefer: 'return=minimal' }, body: JSON.stringify(links) });
-      selectedPoIds.clear(); $('tripPlanForm').reset(); $('tripDate').value = today(); await loadData(); toast('Trip created — selected POs moved to POs in trip.');
+      selectedPoIds.clear(); $('tripPlanDialog').close(); $('tripPlanForm').reset(); $('tripDate').value = today(); await loadData(); toast('Trip created — selected POs moved to POs in trip.');
     } catch (err) { error.textContent = err.message || 'Could not create the trip.'; }
     finally { $('createTripBtn').disabled = selectedPoIds.size === 0; renderPlan(); }
   }
@@ -183,6 +185,8 @@
   function bindEvents() {
     $('loginForm').addEventListener('submit', async event => { event.preventDefault(); $('loginError').textContent = ''; try { await signIn($('emailInput').value.trim(), $('passwordInput').value); await start(); } catch (error) { $('loginError').textContent = error.message || 'Sign in failed.'; } });
     $('signOutBtn').addEventListener('click', signOut); $('refreshBtn').addEventListener('click', loadData); $('clearFilters').addEventListener('click', clearFilters); $('tripPlanForm').addEventListener('submit', createTrip);
+    $('openTripDialogBtn').addEventListener('click', () => { if (!selectedPoIds.size) return; $('tripPlanError').textContent = ''; renderPlan(); $('tripPlanDialog').showModal(); });
+    $('closeTripDialogBtn').addEventListener('click', () => $('tripPlanDialog').close()); $('cancelTripBtn').addEventListener('click', () => $('tripPlanDialog').close());
     ['searchInput', 'statusFilter', 'dateFrom', 'dateTo'].forEach(id => { $(id).addEventListener('input', render); $(id).addEventListener('change', render); });
     $('dateRangeFilter').addEventListener('change', () => { toggleCustomDates(); render(); });
     $('poTableBody').addEventListener('change', event => { if (!event.target.matches('.po-choice')) return; if (event.target.checked) selectedPoIds.add(event.target.value); else selectedPoIds.delete(event.target.value); render(); });
