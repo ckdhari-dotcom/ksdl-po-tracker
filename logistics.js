@@ -45,6 +45,7 @@
     $('readyPoPanel').classList.toggle('hidden', isOwner());
     $('tripSummary').classList.toggle('hidden', !isOwner());
     $('tripToolbar').classList.toggle('hidden', !isOwner());
+    $('tripListPanel').classList.toggle('hidden', !isOwner());
   }
 
   async function signIn(email, password) {
@@ -62,10 +63,18 @@
     if (!['owner', 'executive'].includes(role)) throw new Error('This email is not authorised for KSDL Trips & Dispatch.');
     $('roleBadge').textContent = role === 'owner' ? 'Owner view' : 'Dispatch executive';
     setOwnerVisibility();
-    if (!isOwner()) { $('executiveTripHost').append($('tripComposer')); show('tripComposer'); $('tripDate').value = today(); setStatusOptions('Planning'); }
+    if (!isOwner()) hide('tripComposer');
   }
   async function loadData() {
-    setMessage('Loading open POs…');
+    setMessage('Loading Received POs…');
+    if (!isOwner()) {
+      const poData = await api('/rest/v1/purchase_orders?select=*&status=eq.Received&order=po_received_date.desc');
+      trips = [];
+      purchaseOrders = Array.isArray(poData) ? poData : [];
+      render();
+      setMessage(`${purchaseOrders.length} Received PO${purchaseOrders.length === 1 ? '' : 's'} loaded.`);
+      return;
+    }
     const [tripResult, poResult] = await Promise.allSettled([
       api('/rest/v1/delivery_trips?select=*,delivery_trip_pos(id,purchase_order_id,allocated_cost,allocation_method,purchase_orders(id,po_number,customer_name,delivery_location,po_value,status))&order=trip_date.desc,created_at.desc'),
       api('/rest/v1/purchase_orders?select=*&order=po_received_date.desc')
@@ -125,27 +134,13 @@
     const showForExecutive = !isOwner();
     panel.classList.toggle('hidden', !showForExecutive);
     if (!showForExecutive) return;
-    const busyIds = new Set(trips.filter(trip => !['Delivered', 'Cancelled'].includes(trip.status)).flatMap(trip => (trip.delivery_trip_pos || []).map(link => link.purchase_order_id)));
     const openPoSearch = $('openPoSearch').value.trim().toLowerCase();
-    const allReady = purchaseOrders.filter(po => {
-      const returnedToMe = po.review_status === 'Needs Correction' && po.created_by === session?.user?.id;
-      const openForMe = returnedToMe || (!['Delivered', 'Cancelled'].includes(po.status) && !busyIds.has(po.id));
-      return openForMe;
-    });
-    const ready = allReady.filter(po => {
+    const ready = purchaseOrders.filter(po => po.status === 'Received').filter(po => {
       const searchable = [po.po_number, po.customer_name, po.delivery_location, po.invoice_number, po.transporter, po.remarks, po.status].join(' ').toLowerCase();
       return !openPoSearch || searchable.includes(openPoSearch);
     });
-    selectedOpenPoIds = new Set([...selectedOpenPoIds].filter(id => allReady.some(po => po.id === id && po.status === 'Received')));
-    $('readyPoBody').innerHTML = ready.map(po => {
-      const canDispatch = po.status === 'Received' && !busyIds.has(po.id);
-      const returned = po.review_status === 'Needs Correction' && po.created_by === session?.user?.id;
-      const review = returned ? `<span class="status awaiting">Correction required</span><div class="cell-muted">${esc(po.correction_note || 'Owner requested a correction')}</div>` : `<span class="status">${esc(po.status)}</span><div class="cell-muted">${esc(po.entry_source || 'Gmail')} · ${esc(po.review_status || 'Approved')}</div>`;
-      return `<tr><td>${canDispatch ? `<input class="open-po-choice" type="checkbox" value="${po.id}" ${selectedOpenPoIds.has(po.id) ? 'checked' : ''} aria-label="Select ${esc(po.po_number)}" />` : ''}</td><td><div class="cell-main">${esc(po.po_number)}</div><div class="cell-muted">${esc(po.customer_name || 'Customer')}</div></td><td>${esc(po.delivery_location || '—')}</td><td>${esc(po.po_date || '—')}<div class="cell-muted">Received ${esc(po.po_received_date || '—')}</div></td><td>${review}</td><td>${money(po.po_value)}</td><td>${esc(po.invoice_number || '—')}<div class="cell-muted">${esc(po.invoice_date || '')}</div></td><td>${esc(po.transporter || '—')}<div class="cell-muted">${money(po.transport_amount)}</div></td><td>${esc(po.remarks || '—')}</td><td>${returned ? `<button class="correct-manual-po" data-id="${po.id}" type="button">Correct</button>` : ''}</td></tr>`;
-    }).join('');
+    $('readyPoBody').innerHTML = ready.map(po => `<tr><td><div class="cell-main">${esc(po.po_number)}</div><div class="cell-muted">${esc(po.customer_name || 'Customer')}</div></td><td>${esc(po.delivery_location || '—')}</td><td>${esc(po.po_date || '—')}<div class="cell-muted">Received ${esc(po.po_received_date || '—')}</div></td><td><span class="status">Received</span></td><td>${money(po.po_value)}</td><td>${esc(po.invoice_number || '—')}<div class="cell-muted">${esc(po.invoice_date || '')}</div></td><td>${esc(po.transporter || '—')}<div class="cell-muted">${money(po.transport_amount)}</div></td><td>${esc(po.assigned_to || '—')}</td><td>${esc(po.remarks || '—')}</td></tr>`).join('');
     $('readyPoEmpty').classList.toggle('hidden', ready.length !== 0);
-    $('createSelectedTripBtn').disabled = selectedOpenPoIds.size === 0;
-    $('createSelectedTripBtn').textContent = `Create trip / dispatch (${selectedOpenPoIds.size})`;
   }
 
   function getSelectedIds() { return [...document.querySelectorAll('.po-choice:checked')].map(input => input.value); }
@@ -332,7 +327,6 @@
   function bindEvents() {
     $('loginForm').addEventListener('submit', async event => { event.preventDefault(); $('loginError').textContent = ''; try { await signIn($('emailInput').value.trim(), $('passwordInput').value); await start(); } catch (err) { $('loginError').textContent = err.message || 'Sign in failed.'; } });
     $('signOutBtn').addEventListener('click', signOut); $('newTripBtn').addEventListener('click', () => openTripForm()); $('emptyNewBtn').addEventListener('click', () => openTripForm()); $('manualPoBtn').addEventListener('click', () => openManualPoForm());
-    $('createSelectedTripBtn').addEventListener('click', () => { if (selectedOpenPoIds.size) openTripForm(null, [...selectedOpenPoIds]); });
     $('refreshBtn').addEventListener('click', () => loadData().catch(err => setMessage(err.message, true))); $('executiveRefreshBtn').addEventListener('click', () => loadData().catch(err => setMessage(err.message, true))); $('openPoSearch').addEventListener('input', renderReadyPos); $('searchInput').addEventListener('input', render); $('statusFilter').addEventListener('change', render);
     $('tripForm').addEventListener('submit', saveTrip); $('manualPoForm').addEventListener('submit', saveManualPo); $('poSearch').addEventListener('input', () => renderChecklist(getSelectedIds())); $('allocationMethod').addEventListener('change', updateAllocationPreview);
     ['actualFreight', 'loadingCost', 'parkingToll', 'otherCost'].forEach(id => $(id).addEventListener('input', refreshTotal));

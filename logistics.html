@@ -45,9 +45,9 @@
       </section>
 
       <section id="readyPoPanel" class="table-card executive-start">
-        <div class="table-title"><div><span class="eyebrow">START HERE</span><h2>Open POs ready for dispatch</h2><p>Select one or more Received POs, then create one tempo trip with invoice details.</p></div><button id="createSelectedTripBtn" class="primary" type="button" disabled>Create trip / dispatch (0)</button></div>
-        <div class="table-wrap"><table><thead><tr><th></th><th>PO / Customer</th><th>Location</th><th>Dates</th><th>Status / review</th><th>Value</th><th>Invoice</th><th>Transport</th><th>Remarks</th><th></th></tr></thead><tbody id="readyPoBody"></tbody></table></div>
-        <div id="readyPoEmpty" class="empty-state hidden"><h3>No open POs are waiting</h3><p>All available POs have been planned into a trip, or there are no new POs yet.</p></div>
+        <div class="table-title"><div><span class="eyebrow">READY FOR DISPATCH</span><h2>Received purchase orders</h2><p>Every PO currently waiting for dispatch.</p></div></div>
+        <div class="table-wrap"><table><thead><tr><th>PO / Customer</th><th>Location</th><th>Dates</th><th>Status</th><th>Value</th><th>Invoice</th><th>Transport</th><th>Assigned</th><th>Remarks</th></tr></thead><tbody id="readyPoBody"></tbody></table></div>
+        <div id="readyPoEmpty" class="empty-state hidden"><h3>No Received POs are waiting</h3><p>New POs will appear here automatically when their status is Received.</p></div>
       </section>
       <div id="executiveTripHost"></div>
 
@@ -67,7 +67,7 @@
         <button id="refreshBtn" type="button">Refresh</button>
       </section>
 
-      <section class="table-card">
+      <section id="tripListPanel" class="table-card">
         <div class="table-title"><div><h2>Delivery trips</h2><p id="resultCount">0 trips</p></div></div>
         <div class="table-wrap"><table><thead><tr>
           <th>Trip</th><th>Vehicle / driver</th><th>Linked POs &amp; locations</th><th>Status</th><th class="owner-only">Quote / approved</th><th>Actual cost</th><th></th>
