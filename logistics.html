@@ -7,7 +7,7 @@
     <title>KSDL Executive PO View</title>
     <link rel="stylesheet" href="styles.css" />
     <link rel="stylesheet" href="mobile-filters.css" />
-    <link rel="stylesheet" href="logistics.css?v=step1-20260722" />
+    <link rel="stylesheet" href="logistics.css?v=step2-20260722" />
   </head>
   <body>
     <section id="loginScreen" class="login-screen hidden">
@@ -67,7 +67,7 @@
         <div class="table-wrap">
           <table>
             <thead><tr>
-              <th>PO / Customer</th><th>PO Date</th><th>Status</th><th>Delivery location</th><th>PO Value</th><th>Invoice</th><th>Transport</th><th>Assigned</th><th>Age</th><th>Remarks</th>
+              <th><input id="selectAllPos" type="checkbox" aria-label="Select all visible POs" /></th><th>PO / Customer</th><th>PO Date</th><th>Status</th><th>Delivery location</th><th>PO Value</th><th>Delivery date</th><th>Invoice</th><th>Transport</th><th>Assigned</th><th>Age</th>
             </tr></thead>
             <tbody id="poTableBody"></tbody>
           </table>
@@ -77,11 +77,36 @@
           <p>There are no POs matching the current search and filters.</p>
         </div>
       </section>
+
+      <section class="plan-card">
+        <div class="plan-heading"><div><span class="eyebrow">STEP 3</span><h2>Plan for delivery</h2><p id="selectedPoSummary">Tick POs above to plan one delivery trip.</p></div></div>
+        <form id="tripPlanForm">
+          <div class="plan-grid">
+            <label>Trip date*<input id="tripDate" type="date" required /></label>
+            <label>Transporter / tempo owner*<input id="tripTransporter" required placeholder="e.g. Mahesh Tempo" /></label>
+            <label>Vehicle number<input id="tripVehicle" placeholder="GJ-01-AB-1234" /></label>
+            <label>Driver name<input id="tripDriver" /></label>
+            <label>Driver phone<input id="tripDriverPhone" inputmode="tel" /></label>
+            <label>Invoice number<input id="tripInvoice" /></label>
+            <label>Invoice date<input id="tripInvoiceDate" type="date" /></label>
+            <label>Invoice copy*<input id="tripInvoiceCopy" type="file" accept="application/pdf,image/*" required /></label>
+            <label>Estimated freight (₹)<input id="tripFreight" type="number" min="0" step="0.01" value="0" /></label>
+          </div>
+          <p id="tripPlanError" class="error" aria-live="polite"></p>
+          <div class="plan-actions"><button id="createTripBtn" class="primary" disabled>Create trip with 0 POs</button></div>
+        </form>
+      </section>
+
+      <section class="table-card in-trip-card">
+        <div class="table-title"><div><span class="eyebrow">STEP 4</span><h2>POs in trip</h2><p id="tripCount">0 active trips</p></div></div>
+        <div class="table-wrap"><table class="trip-table"><thead><tr><th>Trip date</th><th>POs / locations</th><th>Tempo / driver</th><th>Invoice</th><th>Status</th><th>Freight</th></tr></thead><tbody id="inTripBody"></tbody></table></div>
+        <div id="tripEmptyState" class="empty-state"><h3>No POs are in a trip</h3><p>Tick POs above and create the first delivery plan.</p></div>
+      </section>
       <p class="footnote">This executive page shows only Received, Scheduled, In Transit and Partially Delivered POs.</p>
     </main>
 
     <div id="toast" class="toast" role="status"></div>
     <script src="config.js"></script>
-    <script src="logistics.js?v=step1-20260722"></script>
+    <script src="logistics.js?v=step2-20260722"></script>
   </body>
 </html>
