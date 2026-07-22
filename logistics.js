@@ -17,6 +17,7 @@
   let session = null;
   let records = [];
   let trips = [];
+  let transporters = [];
   let selectedPoIds = new Set();
   let editingTripId = null;
   let completingTripId = null;
@@ -169,9 +170,10 @@
 
   async function loadData() {
     $('connectionStatus').textContent = 'Loading POs…';
-    const [poResult, tripResult] = await Promise.allSettled([
+    const [poResult, tripResult, transporterResult] = await Promise.allSettled([
       api('/rest/v1/purchase_orders?select=*&order=po_received_date.desc'),
-      api('/rest/v1/delivery_trips?select=*,delivery_trip_pos(purchase_order_id,allocated_cost,invoice_number,invoice_date,invoice_attachment_url,delivery_status,purchase_orders(id,po_number,customer_name,delivery_location,status))&order=trip_date.desc,created_at.desc')
+      api('/rest/v1/delivery_trips?select=*,delivery_trip_pos(purchase_order_id,allocated_cost,invoice_number,invoice_date,invoice_attachment_url,delivery_status,purchase_orders(id,po_number,customer_name,delivery_location,status))&order=trip_date.desc,created_at.desc'),
+      api('/rest/v1/transporters?select=id,name,phone,active&active=eq.true&order=name.asc')
     ]);
     if (poResult.status === 'rejected') {
       records = []; trips = []; render(); $('connectionStatus').textContent = 'Could not load POs'; toast(poResult.reason?.message || 'Could not load POs'); return;
@@ -179,13 +181,21 @@
     records = (Array.isArray(poResult.value) ? poResult.value : []).filter(record => OPEN_STATUSES.includes(record.status));
     tripStorageReady = tripResult.status === 'fulfilled';
     trips = tripStorageReady && Array.isArray(tripResult.value) ? tripResult.value.filter(trip => !CLOSED_TRIP_STATUSES.includes(trip.status)) : [];
+    transporters = transporterResult.status === 'fulfilled' && Array.isArray(transporterResult.value) ? transporterResult.value : [];
+    renderTransporterOptions();
     await Promise.all(records.map(async record => {
       if (record.po_attachment_url) record.po_attachment_link = await signedFileUrl(record.po_attachment_url).catch(() => '');
     }));
     const availableIds = new Set(availableRecords().map(record => record.id));
     selectedPoIds = new Set([...selectedPoIds].filter(id => availableIds.has(id)));
-    $('connectionStatus').textContent = tripStorageReady ? 'Cloud synced' : 'POs loaded; trip setup required';
+    $('connectionStatus').textContent = tripStorageReady && transporterResult.status === 'fulfilled' ? 'Cloud synced' : 'POs loaded; payment setup required';
     render();
+  }
+
+  function renderTransporterOptions(selectedId = '') {
+    const select = $('tripTransporter'), current = selectedId || select.value;
+    select.innerHTML = '<option value="">Select transporter</option>' + transporters.map(transporter => `<option value="${transporter.id}">${safe(transporter.name)}</option>`).join('');
+    select.value = current;
   }
 
   function linkedPoIds() {
@@ -288,12 +298,12 @@
   }
   function openCreateTrip() {
     if (!selectedPoIds.size) return;
-    editingTripId = null; $('tripPlanForm').reset(); $('tripDate').value = today(); $('tripPlanError').textContent = ''; renderPlan(); $('tripPlanDialog').showModal();
+    editingTripId = null; $('tripPlanForm').reset(); renderTransporterOptions(); $('tripDate').value = today(); $('tripPlanError').textContent = ''; renderPlan(); $('tripPlanDialog').showModal();
   }
   function openEditTrip(tripId) {
     const trip = trips.find(item => item.id === tripId); if (!trip) return;
-    editingTripId = tripId; $('tripPlanForm').reset();
-    $('tripDate').value = trip.trip_date || today(); $('tripTransporter').value = trip.transporter || ''; $('tripVehicle').value = trip.vehicle_number || '';
+    editingTripId = tripId; $('tripPlanForm').reset(); renderTransporterOptions(trip.transporter_id || '');
+    $('tripDate').value = trip.trip_date || today(); $('tripVehicle').value = trip.vehicle_number || '';
     $('tripDriver').value = trip.driver_name || ''; $('tripDriverPhone').value = trip.driver_phone || ''; $('tripFreight').value = Number(trip.actual_freight || 0) || '';
     $('tripPlanError').textContent = ''; renderPlan(); $('tripPlanDialog').showModal();
   }
@@ -316,7 +326,9 @@
       for (const detail of details) if (detail.invoiceState === 'mismatch') throw new Error(`The uploaded invoice does not match PO ${detail.record.po_number}. Replace it before saving.`);
       for (const detail of details) if (!detail.invoiceNumber || !detail.invoiceDate || (!detail.invoiceFile && !detail.existingInvoicePath)) throw new Error(`Upload and verify the invoice for PO ${detail.record.po_number}.`);
       await Promise.all(details.map(async detail => { detail.invoicePath = detail.invoiceFile ? await uploadTripInvoice(tripId, detail.record.id, detail.invoiceFile) : detail.existingInvoicePath; }));
-      const tripPayload = { trip_date: $('tripDate').value, transporter: $('tripTransporter').value.trim(), vehicle_number: $('tripVehicle').value.trim() || null, driver_name: $('tripDriver').value.trim() || null, driver_phone: $('tripDriverPhone').value.trim() || null, quoted_cost: freight, actual_freight: freight };
+      const transporterId = $('tripTransporter').value, transporterName = $('tripTransporter').selectedOptions[0]?.textContent?.trim() || '';
+      if (!transporterId) throw new Error('Select a transporter from the Transporter Master.');
+      const tripPayload = { trip_date: $('tripDate').value, transporter_id: transporterId, transporter: transporterName, vehicle_number: $('tripVehicle').value.trim() || null, driver_name: $('tripDriver').value.trim() || null, driver_phone: $('tripDriverPhone').value.trim() || null, quoted_cost: freight, actual_freight: freight };
       if (editTrip) {
         await api(`/rest/v1/delivery_trips?id=eq.${encodeURIComponent(tripId)}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json', Prefer: 'return=minimal' }, body: JSON.stringify(tripPayload) });
         await Promise.all(details.map(detail => api(`/rest/v1/delivery_trip_pos?trip_id=eq.${encodeURIComponent(tripId)}&purchase_order_id=eq.${encodeURIComponent(detail.record.id)}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json', Prefer: 'return=minimal' }, body: JSON.stringify({ allocation_method: 'Manual', allocated_cost: detail.allocatedCost, invoice_number: detail.invoiceNumber, invoice_date: detail.invoiceDate, invoice_attachment_url: detail.invoicePath }) })));

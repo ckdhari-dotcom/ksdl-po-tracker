@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#124e45" />
+    <title>KSDL Transport Payments</title>
+    <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="mobile-filters.css" />
+    <link rel="stylesheet" href="payments.css?v=20260722-2" />
+  </head>
+  <body>
+    <section id="loginScreen" class="login-screen hidden">
+      <form id="loginForm" class="login-card">
+        <span class="eyebrow">KSDL DISTRIBUTION</span><h1>Transport Payments</h1><p>Owner sign-in is required.</p>
+        <label>Email<input id="emailInput" type="email" autocomplete="username" required autofocus /></label>
+        <label>Password<input id="passwordInput" type="password" autocomplete="current-password" required /></label>
+        <p id="loginError" class="error" aria-live="polite"></p><button>Sign in</button>
+      </form>
+    </section>
+
+    <main id="app" class="app-shell hidden">
+      <header class="topbar">
+        <div><span class="eyebrow">OWNER CONTROL</span><h1>Transport Payments</h1></div>
+        <div class="top-actions"><span id="connectionStatus" class="connection-status">Connecting…</span><span id="signedInAs" class="connection-status"></span><a class="tracker-nav-link" href="index.html">PO Tracker</a><a class="tracker-nav-link" href="logistics.html">Trips</a><button id="refreshBtn" type="button">Refresh</button><button id="signOutBtn" class="text-btn" type="button">Sign out</button></div>
+      </header>
+
+      <section class="summary-grid payment-summary" aria-label="Payment summary">
+        <article><span>Outstanding</span><strong id="outstandingAmount">₹0</strong><small id="outstandingCount">0 deliveries</small></article>
+        <article><span>Draft settlements</span><strong id="draftAmount">₹0</strong><small id="draftCount">0 settlements</small></article>
+        <article class="attention"><span>Awaiting payment</span><strong id="approvedAmount">₹0</strong><small id="approvedCount">0 approved</small></article>
+        <article><span>Paid, not reconciled</span><strong id="paidAmount">₹0</strong><small id="paidCount">0 payments</small></article>
+        <article><span>Paid this month</span><strong id="monthPaidAmount">₹0</strong><small>Including reconciled</small></article>
+      </section>
+
+      <section class="payment-card">
+        <div class="section-head"><div><span class="eyebrow">SETUP</span><h2>Transporter Master</h2><p>Active names appear in the executive trip dropdown. Payment details and QR codes remain owner-only.</p></div><button id="addTransporterBtn" class="primary" type="button">+ Add transporter</button></div>
+        <div class="table-wrap"><table class="payment-table"><thead><tr><th>Transporter</th><th>Contact</th><th>Verified payee</th><th>Weekly payment</th><th>Status</th><th>Action</th></tr></thead><tbody id="transporterBody"></tbody></table></div>
+        <div id="transporterEmpty" class="empty-state"><h3>No transporters added</h3><p>Add the first tempo owner before an executive creates a new trip.</p></div>
+      </section>
+
+      <section class="payment-card">
+        <div class="section-head"><div><span class="eyebrow">WEEKLY PAYABLES</span><h2>Delivered POs awaiting settlement</h2><p>Select completed deliveries for one transporter and create a weekly settlement.</p></div></div>
+        <div class="payment-filters">
+          <label>Transporter<select id="payableTransporterFilter"><option value="">All transporters</option></select></label>
+          <label>Delivered from<input id="payableFrom" type="date" /></label><label>Delivered to<input id="payableTo" type="date" /></label>
+          <button id="clearPayableFilters" class="text-btn" type="button">Clear</button>
+        </div>
+        <div class="settlement-selection"><span><strong id="selectedDeliveryCount">0</strong> deliveries selected</span><span>Total <strong id="selectedDeliveryTotal">₹0</strong></span><button id="createSettlementBtn" class="primary" type="button" disabled>Create weekly settlement</button></div>
+        <div class="table-wrap"><table class="payment-table payable-table"><thead><tr><th><input id="selectAllPayables" type="checkbox" aria-label="Select all visible deliveries" /></th><th>Transporter</th><th>Delivered</th><th>PO / location</th><th>Trip / vehicle</th><th>Final cost</th></tr></thead><tbody id="payableBody"></tbody></table></div>
+        <div id="payableEmpty" class="empty-state"><h3>No outstanding deliveries</h3><p>Completed deliveries that are not yet included in a settlement will appear here.</p></div>
+      </section>
+
+      <section class="payment-card">
+        <div class="section-head"><div><span class="eyebrow">PAYMENT REGISTER</span><h2>Weekly settlements</h2><p>Approve, record the GPay payment and reconcile it against the bank statement.</p></div></div>
+        <div class="table-wrap"><table class="payment-table settlement-table"><thead><tr><th>Settlement</th><th>Transporter / period</th><th>Deliveries</th><th>Total</th><th>Status</th><th>Payment proof</th><th>Action</th></tr></thead><tbody id="settlementBody"></tbody></table></div>
+        <div id="settlementEmpty" class="empty-state"><h3>No settlements created</h3><p>Create a weekly settlement from outstanding delivered POs.</p></div>
+      </section>
+    </main>
+
+    <dialog id="transporterDialog" class="payment-dialog"><form id="transporterForm">
+      <div class="modal-header"><div><span class="eyebrow">TRANSPORTER MASTER</span><h2 id="transporterDialogTitle">Add transporter</h2></div><button id="closeTransporterDialog" class="icon-btn" type="button" aria-label="Close">×</button></div>
+      <input id="transporterId" type="hidden" />
+      <div class="form-grid payment-form-grid">
+        <label>Transporter / tempo owner name*<input id="transporterName" required /></label><label>Phone number<input id="transporterPhone" inputmode="tel" /></label>
+        <label>Verified UPI ID*<input id="transporterUpi" required placeholder="name@bank" /></label><label>Payee name shown in UPI*<input id="transporterPayee" required /></label>
+        <label>Weekly payment day<select id="transporterPaymentDay"><option>Monday</option><option>Tuesday</option><option>Wednesday</option><option>Thursday</option><option selected>Friday</option><option>Saturday</option><option>Sunday</option></select></label>
+        <label>QR code image<input id="transporterQr" type="file" accept="image/jpeg,image/png,application/pdf" /><small id="existingQrNote"></small></label>
+        <label class="check-label"><input id="transporterVerified" type="checkbox" /> Owner verified UPI ID, payee name and QR</label><label class="check-label"><input id="transporterActive" type="checkbox" checked /> Active transporter</label>
+      </div>
+      <p id="transporterError" class="error" aria-live="polite"></p><div class="modal-actions"><span></span><button id="cancelTransporterBtn" type="button">Cancel</button><button class="primary">Save transporter</button></div>
+    </form></dialog>
+
+    <dialog id="paymentDialog" class="payment-dialog"><form id="paymentForm">
+      <div class="modal-header"><div><span class="eyebrow">RECORD GPAY PAYMENT</span><h2 id="paymentDialogTitle">Mark settlement paid</h2><p id="paymentDialogSummary"></p></div><button id="closePaymentDialog" class="icon-btn" type="button" aria-label="Close">×</button></div>
+      <input id="paymentSettlementId" type="hidden" />
+      <div id="paymentPayeeCard" class="payee-card"></div>
+      <div class="form-grid payment-form-grid"><label>Payment date*<input id="paymentDate" type="date" required /></label><label>UPI transaction ID / UTR*<input id="paymentUtr" required /></label><label class="span-2">GPay payment screenshot*<input id="paymentProof" type="file" accept="image/jpeg,image/png,application/pdf" required /></label><label class="span-2">Remarks<textarea id="paymentRemarks" rows="2"></textarea></label></div>
+      <p id="paymentError" class="error" aria-live="polite"></p><div class="modal-actions"><span></span><button id="cancelPaymentBtn" type="button">Cancel</button><button class="primary">Save payment</button></div>
+    </form></dialog>
+
+    <div id="toast" class="toast" role="status"></div>
+    <script src="config.js"></script><script src="payments.js?v=20260722-2"></script>
+  </body>
+</html>
