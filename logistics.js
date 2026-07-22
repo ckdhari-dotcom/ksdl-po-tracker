@@ -42,6 +42,7 @@
     $('manualPoBtn').classList.toggle('hidden', isOwner());
     $('newTripBtn').classList.toggle('hidden', !isOwner());
     $('executivePoToolbar').classList.toggle('hidden', isOwner());
+    $('readyPoPanel').classList.toggle('hidden', isOwner());
     $('tripSummary').classList.toggle('hidden', !isOwner());
     $('tripToolbar').classList.toggle('hidden', !isOwner());
   }
@@ -64,14 +65,17 @@
     if (!isOwner()) { $('executiveTripHost').append($('tripComposer')); show('tripComposer'); $('tripDate').value = today(); setStatusOptions('Planning'); }
   }
   async function loadData() {
-    setMessage('Refreshing trips…');
-    const [tripData, poData] = await Promise.all([
+    setMessage('Loading open POs…');
+    const [tripResult, poResult] = await Promise.allSettled([
       api('/rest/v1/delivery_trips?select=*,delivery_trip_pos(id,purchase_order_id,allocated_cost,allocation_method,purchase_orders(id,po_number,customer_name,delivery_location,po_value,status))&order=trip_date.desc,created_at.desc'),
-      api('/rest/v1/purchase_orders?select=id,po_number,customer_name,delivery_location,po_value,status,po_date,po_received_date,invoice_number,invoice_date,transporter,transport_amount,assigned_to,remarks,po_attachment_url,delivery_note_url,entry_source,review_status,correction_note,created_by&order=po_date.desc')
+      api('/rest/v1/purchase_orders?select=*&order=po_received_date.desc')
     ]);
-    trips = Array.isArray(tripData) ? tripData : [];
-    purchaseOrders = Array.isArray(poData) ? poData : [];
-    render(); setMessage(`Updated ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`);
+    if (poResult.status === 'rejected') throw poResult.reason;
+    trips = tripResult.status === 'fulfilled' && Array.isArray(tripResult.value) ? tripResult.value : [];
+    purchaseOrders = Array.isArray(poResult.value) ? poResult.value : [];
+    render();
+    const tripWarning = tripResult.status === 'rejected' ? ' Open POs loaded; trip history is temporarily unavailable.' : '';
+    setMessage(`Updated ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}.${tripWarning}`, tripResult.status === 'rejected');
   }
   function tripMatches(trip, search, status) {
     if (status && trip.status !== status) return false;
