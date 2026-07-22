@@ -7,7 +7,7 @@
     <title>KSDL Executive PO View</title>
     <link rel="stylesheet" href="styles.css" />
     <link rel="stylesheet" href="mobile-filters.css" />
-    <link rel="stylesheet" href="logistics.css?v=edit-trip-20260722" />
+    <link rel="stylesheet" href="logistics.css?v=complete-trip-20260722" />
     <style>
       .trip-plan-dialog{width:min(1120px,calc(100% - 24px))}
       .po-detail-heading{margin-top:20px;padding-top:17px;border-top:1px solid var(--line)}
@@ -109,6 +109,19 @@
         </form>
       </dialog>
 
+      <dialog id="completeTripDialog" class="complete-trip-dialog">
+        <form id="completeTripForm">
+          <div class="trip-dialog-head"><div><span class="eyebrow">DELIVERY COMPLETED</span><h2>Complete delivery</h2><p id="completeTripSummary">Upload the signed delivery slip and confirm the final transport cost.</p></div><button id="closeCompleteTripBtn" class="icon-btn" type="button" aria-label="Close">×</button></div>
+          <div class="complete-trip-fields">
+            <label>Final total transport cost (₹)<input id="completeTripCost" type="number" min="0" step="0.01" placeholder="0" /></label>
+            <label>Signed delivery slip*<small>Upload PDF, JPG or PNG. This will be visible in the owner tracker.</small><input id="completeTripSlip" type="file" accept="application/pdf,image/jpeg,image/png" required /></label>
+          </div>
+          <p class="completion-note">Completing the trip will mark every linked PO as Delivered and copy its invoice details, invoice file, allocated transport cost and delivery slip to the owner tracker.</p>
+          <p id="completeTripError" class="error" aria-live="polite"></p>
+          <div class="plan-actions"><button id="cancelCompleteTripBtn" type="button">Cancel</button><button id="completeTripBtn" class="primary" type="submit">Complete delivery</button></div>
+        </form>
+      </dialog>
+
       <section class="table-card in-trip-card">
         <div class="table-title"><div><span class="eyebrow">STEP 4</span><h2>POs in trip</h2><p id="tripCount">0 active trips</p></div></div>
         <div class="table-wrap"><table class="trip-table"><thead><tr><th>Trip date</th><th>POs / locations</th><th>Tempo / driver</th><th>Invoice</th><th>Status</th><th>Tempo cost</th><th>Action</th></tr></thead><tbody id="inTripBody"></tbody></table></div>
@@ -120,6 +133,6 @@
     <div id="toast" class="toast" role="status"></div>
     <script src="config.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-    <script src="logistics.js?v=edit-trip-20260722"></script>
+    <script src="logistics.js?v=complete-trip-20260722"></script>
   </body>
 </html>

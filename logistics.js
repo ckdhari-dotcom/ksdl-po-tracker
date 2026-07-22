@@ -19,6 +19,7 @@
   let trips = [];
   let selectedPoIds = new Set();
   let editingTripId = null;
+  let completingTripId = null;
   let tripStorageReady = true;
   let refreshTimer = null;
 
@@ -68,6 +69,14 @@
     if (file.size > 10 * 1024 * 1024) throw new Error('Invoice copy must be 10 MB or smaller.');
     const fileName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
     const path = `trip-invoices/${tripId}/${poId}/${Date.now()}-${fileName}`;
+    await api(`/storage/v1/object/${NOTE_BUCKET}/${path}`, { method: 'POST', headers: { 'Content-Type': file.type || 'application/octet-stream', 'x-upsert': 'true' }, body: file });
+    return path;
+  }
+  async function uploadTripDeliverySlip(tripId, file) {
+    if (!file) throw new Error('Upload the signed delivery slip before completing the trip.');
+    if (file.size > 10 * 1024 * 1024) throw new Error('Delivery slip must be 10 MB or smaller.');
+    const fileName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+    const path = `trip-delivery-slips/${tripId}/${Date.now()}-${fileName}`;
     await api(`/storage/v1/object/${NOTE_BUCKET}/${path}`, { method: 'POST', headers: { 'Content-Type': file.type || 'application/octet-stream', 'x-upsert': 'true' }, body: file });
     return path;
   }
@@ -267,7 +276,7 @@
       const chips = links.map(link => `<span class="trip-po-chip">${safe(link.purchase_orders?.po_number || 'PO')} · ${safe(link.purchase_orders?.delivery_location || 'Location pending')}</span>`).join('');
       const invoices = links.map(link => `<div><strong>${safe(link.purchase_orders?.po_number || 'PO')}:</strong> ${safe(link.invoice_number || '—')} · ${money(link.allocated_cost)}</div>`).join('');
       const tempoCost = Number(trip.actual_freight || 0);
-      return `<tr><td>${localDate(trip.trip_date)}</td><td><div class="trip-po-list">${chips || 'No POs linked'}</div></td><td>${safe(trip.vehicle_number || trip.transporter || '—')}<span class="po-secondary">${safe(trip.driver_name || '')}</span></td><td>${invoices || '—'}</td><td><span class="executive-status">${safe(trip.status)}</span></td><td>${tempoCost ? money(tempoCost) : '—'}</td><td><button class="text-btn edit-trip-btn" type="button" data-trip-id="${trip.id}">Edit</button></td></tr>`;
+      return `<tr><td>${localDate(trip.trip_date)}</td><td><div class="trip-po-list">${chips || 'No POs linked'}</div></td><td>${safe(trip.vehicle_number || trip.transporter || '—')}<span class="po-secondary">${safe(trip.driver_name || '')}</span></td><td>${invoices || '—'}</td><td><span class="executive-status">${safe(trip.status)}</span></td><td>${tempoCost ? money(tempoCost) : '—'}</td><td><div class="trip-actions"><button class="text-btn edit-trip-btn" type="button" data-trip-id="${trip.id}">Edit</button><button class="complete-trip-btn" type="button" data-trip-id="${trip.id}">Complete delivery</button></div></td></tr>`;
     }).join('');
     $('tripEmptyState').classList.toggle('hidden', trips.length !== 0);
   }
@@ -322,6 +331,35 @@
     finally { button.disabled = false; button.textContent = editTrip ? 'Save trip changes' : `Create trip with ${chosen.length} PO${chosen.length === 1 ? '' : 's'}`; }
   }
 
+  function closeCompleteTripDialog() {
+    if ($('completeTripDialog').open) $('completeTripDialog').close();
+    completingTripId = null; $('completeTripForm').reset(); $('completeTripError').textContent = '';
+  }
+  function openCompleteTrip(tripId) {
+    const trip = trips.find(item => item.id === tripId); if (!trip) return;
+    const incompleteInvoice = (trip.delivery_trip_pos || []).find(link => !(link.invoice_number || trip.invoice_number) || !(link.invoice_date || trip.invoice_date) || !(link.invoice_attachment_url || trip.invoice_attachment_url));
+    if (incompleteInvoice) { toast(`Edit trip and complete the invoice details for PO ${incompleteInvoice.purchase_orders?.po_number || ''}.`); return; }
+    completingTripId = tripId; $('completeTripForm').reset(); $('completeTripError').textContent = '';
+    const poLabels = (trip.delivery_trip_pos || []).map(link => `${link.purchase_orders?.po_number || 'PO'}${link.purchase_orders?.delivery_location ? ` (${link.purchase_orders.delivery_location})` : ''}`);
+    $('completeTripSummary').textContent = poLabels.length ? `Complete ${poLabels.join(', ')}` : 'Upload the signed delivery slip and confirm the final transport cost.';
+    $('completeTripCost').value = Number(trip.actual_freight || 0) || '';
+    $('completeTripDialog').showModal();
+  }
+  async function completeTrip(event) {
+    event.preventDefault(); const error = $('completeTripError'); error.textContent = '';
+    const trip = trips.find(item => item.id === completingTripId), slip = $('completeTripSlip').files?.[0];
+    if (!trip) { error.textContent = 'Trip not found. Refresh and try again.'; return; }
+    if (!slip) { error.textContent = 'Upload the signed delivery slip first.'; return; }
+    const button = $('completeTripBtn');
+    try {
+      button.disabled = true; button.textContent = 'Completing delivery…';
+      const notePath = await uploadTripDeliverySlip(trip.id, slip), finalCost = Number($('completeTripCost').value || 0);
+      await api('/rest/v1/rpc/complete_delivery_trip', { method: 'POST', headers: { 'Content-Type': 'application/json', Prefer: 'return=minimal' }, body: JSON.stringify({ trip: trip.id, note_path: notePath, final_cost: finalCost }) });
+      closeCompleteTripDialog(); await loadData(); toast('Delivery completed — linked POs updated in the owner tracker.');
+    } catch (err) { error.textContent = err.message || 'Could not complete the delivery.'; }
+    finally { button.disabled = false; button.textContent = 'Complete delivery'; }
+  }
+
   function toggleCustomDates() { $('customDateFilters').classList.toggle('hidden', $('dateRangeFilter').value !== 'custom'); }
   function clearFilters() { $('searchInput').value = ''; $('statusFilter').value = ''; $('dateRangeFilter').value = ''; $('dateFrom').value = ''; $('dateTo').value = ''; toggleCustomDates(); render(); }
   function bindEvents() {
@@ -330,7 +368,11 @@
     $('openTripDialogBtn').addEventListener('click', openCreateTrip);
     $('closeTripDialogBtn').addEventListener('click', closeTripDialog); $('cancelTripBtn').addEventListener('click', closeTripDialog);
     $('tripPoDetails').addEventListener('change', event => { if (event.target.matches('.po-invoice-file')) handleInvoiceFile(event.target); });
-    $('inTripBody').addEventListener('click', event => { const button = event.target.closest('.edit-trip-btn'); if (button) openEditTrip(button.dataset.tripId); });
+    $('completeTripForm').addEventListener('submit', completeTrip); $('closeCompleteTripBtn').addEventListener('click', closeCompleteTripDialog); $('cancelCompleteTripBtn').addEventListener('click', closeCompleteTripDialog);
+    $('inTripBody').addEventListener('click', event => {
+      const editButton = event.target.closest('.edit-trip-btn'), completeButton = event.target.closest('.complete-trip-btn');
+      if (editButton) openEditTrip(editButton.dataset.tripId); else if (completeButton) openCompleteTrip(completeButton.dataset.tripId);
+    });
     ['searchInput', 'statusFilter', 'dateFrom', 'dateTo'].forEach(id => { $(id).addEventListener('input', render); $(id).addEventListener('change', render); });
     $('dateRangeFilter').addEventListener('change', () => { toggleCustomDates(); render(); });
     $('poTableBody').addEventListener('change', event => { if (!event.target.matches('.po-choice')) return; if (event.target.checked) selectedPoIds.add(event.target.value); else selectedPoIds.delete(event.target.value); render(); });
