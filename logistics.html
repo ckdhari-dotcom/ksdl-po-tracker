@@ -4,19 +4,16 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#124e45" />
-    <title>KSDL Trips & Dispatch</title>
-    <link rel="stylesheet" href="logistics.css" />
-    <style>
-      .trip-composer { margin: 0 auto 18px; background: #fff; border: 1px solid #dce8e4; }
-      .selected-po-summary { margin: 5px 0 0; color: #62736f; font-size: .85rem; }
-      @media (max-width: 760px) { .trip-composer { width: 100%; } }
-    </style>
+    <title>KSDL Executive PO View</title>
+    <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="mobile-filters.css" />
+    <link rel="stylesheet" href="logistics.css?v=step1-20260722" />
   </head>
   <body>
     <section id="loginScreen" class="login-screen hidden">
       <form id="loginForm" class="login-card">
         <span class="eyebrow">KSDL DISTRIBUTION</span>
-        <h1>Trips &amp; Dispatch</h1>
+        <h1>Executive PO View</h1>
         <p>Sign in with your authorised business email.</p>
         <label>Email<input id="emailInput" type="email" autocomplete="username" required autofocus /></label>
         <label>Password<input id="passwordInput" type="password" autocomplete="current-password" required /></label>
@@ -27,130 +24,64 @@
 
     <main id="app" class="app-shell hidden">
       <header class="topbar">
-        <div><span class="eyebrow">KSDL DISTRIBUTION</span><h1>Trips &amp; Dispatch</h1></div>
+        <div><span class="eyebrow">KSDL DISTRIBUTION</span><h1>Open Purchase Orders</h1></div>
         <div class="top-actions">
-          <a class="nav-link" href="./">PO Tracker</a>
-          <span id="roleBadge" class="role-badge">Loading…</span>
+          <span id="connectionStatus" class="connection-status">Connecting…</span>
+          <span id="signedInAs" class="connection-status"></span>
+          <button id="refreshBtn" type="button">Refresh</button>
           <button id="signOutBtn" class="text-btn" type="button">Sign out</button>
-          <button id="manualPoBtn" class="text-btn" type="button">+ Manual PO</button>
-          <button id="newTripBtn" class="primary" type="button">+ New trip</button>
         </div>
       </header>
 
-      <p id="syncMessage" class="sync-message" aria-live="polite"></p>
-
-      <section id="executivePoToolbar" class="toolbar hidden">
-        <label class="search"><span>⌕</span><input id="openPoSearch" placeholder="Search open PO number, customer, location, invoice or transporter" /></label>
-        <button id="executiveRefreshBtn" type="button">Refresh POs</button>
+      <section class="summary-grid" aria-label="Open PO summary">
+        <article><span>Total open POs</span><strong id="openCount">0</strong><small id="openValue">₹0 value</small></article>
+        <article><span>Received</span><strong id="receivedCount">0</strong><small>Waiting for planning</small></article>
+        <article><span>Scheduled</span><strong id="scheduledCount">0</strong><small>Planned for dispatch</small></article>
+        <article><span>In transit</span><strong id="transitCount">0</strong><small>Material on the road</small></article>
+        <article class="attention"><span>Partially delivered</span><strong id="partialCount">0</strong><small>Balance still pending</small></article>
       </section>
 
-      <section id="readyPoPanel" class="table-card executive-start">
-        <div class="table-title"><div><span class="eyebrow">READY FOR DISPATCH</span><h2>Received purchase orders</h2><p>Every PO currently waiting for dispatch.</p></div></div>
-        <div class="table-wrap"><table><thead><tr><th>PO / Customer</th><th>Location</th><th>Dates</th><th>Status</th><th>Value</th><th>Invoice</th><th>Transport</th><th>Assigned</th><th>Remarks</th></tr></thead><tbody id="readyPoBody"></tbody></table></div>
-        <div id="readyPoEmpty" class="empty-state hidden"><h3>No Received POs are waiting</h3><p>New POs will appear here automatically when their status is Received.</p></div>
-      </section>
-      <div id="executiveTripHost"></div>
-
-      <section id="tripSummary" class="summary-grid" aria-label="Logistics summary">
-        <article><span>Open trips</span><strong id="openTrips">0</strong><small>Planning, approved or dispatched</small></article>
-        <article class="attention"><span>Awaiting approval</span><strong id="awaitingTrips">0</strong><small>Owner action required</small></article>
-        <article class="owner-only"><span>This month’s cost</span><strong id="monthCost">₹0</strong><small>Actual trip cost</small></article>
-        <article class="owner-only"><span>Cost vs PO value</span><strong id="costPercent">0%</strong><small>This month’s linked POs</small></article>
-      </section>
-
-      <section id="tripToolbar" class="toolbar">
-        <label class="search"><span>⌕</span><input id="searchInput" placeholder="Search trip, vehicle, driver or PO" /></label>
-        <select id="statusFilter" aria-label="Filter by trip status">
-          <option value="">All trip statuses</option>
-          <option>Planning</option><option>Awaiting Approval</option><option>Approved</option><option>Dispatched</option><option>Delivered</option><option>Cancelled</option>
+      <section class="toolbar executive-toolbar">
+        <label class="search"><span>⌕</span><input id="searchInput" placeholder="Search PO, customer, location, invoice or transporter" /></label>
+        <select id="statusFilter" aria-label="Filter by status">
+          <option value="">All open statuses</option>
+          <option>Received</option><option>Scheduled</option><option>In Transit</option><option>Partially Delivered</option>
         </select>
-        <button id="refreshBtn" type="button">Refresh</button>
+        <select id="dateRangeFilter" aria-label="Filter by PO date">
+          <option value="">All dates</option>
+          <option value="current">Current month</option>
+          <option value="last">Last month</option>
+          <option value="custom">Custom dates</option>
+        </select>
+        <div id="customDateFilters" class="custom-date-filters hidden">
+          <label class="date-filter">From<input id="dateFrom" type="date" /></label>
+          <label class="date-filter">To<input id="dateTo" type="date" /></label>
+        </div>
+        <button id="clearFilters" class="text-btn" type="button">Clear filters</button>
       </section>
 
-      <section id="tripListPanel" class="table-card">
-        <div class="table-title"><div><h2>Delivery trips</h2><p id="resultCount">0 trips</p></div></div>
-        <div class="table-wrap"><table><thead><tr>
-          <th>Trip</th><th>Vehicle / driver</th><th>Linked POs &amp; locations</th><th>Status</th><th class="owner-only">Quote / approved</th><th>Actual cost</th><th></th>
-        </tr></thead><tbody id="tripTableBody"></tbody></table></div>
-        <div id="emptyState" class="empty-state hidden"><h3>No delivery trips yet</h3><p>Create one trip and attach the POs travelling in that tempo.</p><button id="emptyNewBtn" class="primary" type="button">+ Create first trip</button></div>
+      <section class="table-card">
+        <div class="table-title">
+          <div><h2>Open purchase orders</h2><p id="resultCount">0 records</p></div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr>
+              <th>PO / Customer</th><th>PO Date</th><th>Status</th><th>Delivery location</th><th>PO Value</th><th>Invoice</th><th>Transport</th><th>Assigned</th><th>Age</th><th>Remarks</th>
+            </tr></thead>
+            <tbody id="poTableBody"></tbody>
+          </table>
+        </div>
+        <div id="emptyState" class="empty-state hidden">
+          <h3>No open POs found</h3>
+          <p>There are no POs matching the current search and filters.</p>
+        </div>
       </section>
+      <p class="footnote">This executive page shows only Received, Scheduled, In Transit and Partially Delivered POs.</p>
     </main>
 
-    <section id="tripComposer" class="trip-dialog trip-composer hidden">
-      <form id="tripForm">
-        <div class="dialog-head"><div><span class="eyebrow">CREATE TRIP / DISPATCH</span><h2 id="tripDialogTitle">Selected POs for one tempo trip</h2><p id="selectedTripPoSummary" class="selected-po-summary">Select POs above to begin.</p></div><button class="close-btn" type="button" data-hide-trip aria-label="Close">×</button></div>
-        <input id="tripId" type="hidden" />
-        <div class="form-grid">
-          <label>Trip date<input id="tripDate" type="date" required /></label>
-          <label>Transporter / tempo owner<input id="transporter" placeholder="e.g. Mahesh Tempo" /></label>
-          <label>Vehicle number<input id="vehicleNumber" placeholder="GJ-01-AB-1234" /></label>
-          <label>Driver name<input id="driverName" placeholder="Driver name" /></label>
-          <label>Driver phone<input id="driverPhone" inputmode="tel" placeholder="10 digit mobile" /></label>
-          <label>Trip status<select id="tripStatus"><option>Planning</option><option>Awaiting Approval</option><option>Approved</option><option>Dispatched</option><option>Delivered</option><option>Cancelled</option></select></label>
-          <label>Invoice number<input id="tripInvoiceNumber" placeholder="Tally invoice number" /></label>
-          <label>Invoice date<input id="tripInvoiceDate" type="date" /></label>
-          <label class="span-all">Invoice copy<input id="tripInvoiceCopy" type="file" accept="application/pdf,image/*" /><small>Attach the invoice PDF or image for this tempo trip.</small></label>
-        </div>
-
-        <section class="cost-panel">
-          <h3>Trip cost</h3>
-          <div class="form-grid">
-            <label class="owner-cost">Quoted freight<input id="quotedCost" type="number" min="0" step="0.01" value="0" /></label>
-            <label class="owner-cost">Approved freight<input id="approvedCost" type="number" min="0" step="0.01" placeholder="Owner only" /></label>
-            <label>Actual freight<input id="actualFreight" type="number" min="0" step="0.01" value="0" /></label>
-            <label>Loading / unloading<input id="loadingCost" type="number" min="0" step="0.01" value="0" /></label>
-            <label>Parking / toll<input id="parkingToll" type="number" min="0" step="0.01" value="0" /></label>
-            <label>Other cost<input id="otherCost" type="number" min="0" step="0.01" value="0" /></label>
-          </div>
-          <div class="cost-total">Total actual trip cost <strong id="totalActual">₹0</strong></div>
-        </section>
-
-        <section class="po-panel">
-          <div class="section-heading"><div><h3>POs travelling in this trip</h3><p>Select every PO loaded in this tempo.</p></div><label>Cost allocation<select id="allocationMethod"><option value="Equal">Equal split</option><option value="PO Value">By PO value</option></select></label></div>
-          <input id="poSearch" class="po-search" placeholder="Search open PO, customer or location" />
-          <div id="poChecklist" class="po-checklist"></div>
-          <p id="allocationPreview" class="allocation-preview">Select POs to see the cost allocation.</p>
-        </section>
-
-        <label class="remarks-label">Remarks<textarea id="tripRemarks" rows="3" placeholder="Route, delivery instruction, payment note…"></textarea></label>
-        <p id="tripError" class="error" aria-live="polite"></p>
-        <div class="dialog-actions"><button type="button" class="text-btn" data-hide-trip>Cancel</button><button id="saveTripBtn" class="primary">Save trip</button></div>
-      </form>
-    </section>
-
-    <dialog id="manualPoDialog" class="trip-dialog">
-      <form id="manualPoForm" method="dialog">
-        <div class="dialog-head"><div><span class="eyebrow">EXECUTIVE ENTRY</span><h2 id="manualPoTitle">Add manual PO</h2></div><button class="close-btn" type="button" data-close="manualPoDialog" aria-label="Close">×</button></div>
-        <input id="manualPoId" type="hidden" />
-        <div class="form-grid">
-          <label>Customer name<input id="manualCustomer" required placeholder="e.g. DMart" /></label>
-          <label>PO number<input id="manualPoNumber" required placeholder="Store PO number" /></label>
-          <label>Delivery location<input id="manualLocation" placeholder="e.g. Bopal" /></label>
-          <label>PO date<input id="manualPoDate" type="date" required /></label>
-          <label>PO received date<input id="manualReceivedDate" type="date" required /></label>
-          <label>PO value (₹)<input id="manualPoValue" type="number" min="0" step="0.01" value="0" /></label>
-          <label class="span-all">PO copy (optional)<input id="manualPoCopy" type="file" accept="application/pdf,image/*" /><small>Upload a photo/PDF if the store gave a printed or WhatsApp PO.</small></label>
-          <label class="span-all">Correction / delivery update note<textarea id="manualRemarks" rows="3" placeholder="Add any instruction or explain a correction"></textarea></label>
-          <label id="manualSlipLabel" class="span-all hidden">Replacement delivery slip<input id="manualDeliverySlip" type="file" accept="application/pdf,image/*" /><small>Use only when you are correcting a delivery entry returned by the owner.</small></label>
-        </div>
-        <p id="manualPoError" class="error" aria-live="polite"></p>
-        <div class="dialog-actions"><button type="button" class="text-btn" data-close="manualPoDialog">Cancel</button><button id="saveManualPoBtn" class="primary">Save manual PO</button></div>
-      </form>
-    </dialog>
-
-    <dialog id="viewDialog" class="trip-dialog view-dialog">
-      <div>
-        <div class="dialog-head"><div><span class="eyebrow">TRIP DETAIL</span><h2 id="viewTripTitle">Delivery trip</h2></div><button class="close-btn" type="button" data-close="viewDialog" aria-label="Close">×</button></div>
-        <div id="viewTripBody"></div>
-        <section id="completeTripPanel" class="complete-panel">
-          <h3>Complete delivery</h3><p>Upload the signed delivery slip. This marks the trip and every linked PO as Delivered.</p>
-          <div><input id="deliverySlipInput" type="file" accept="application/pdf,image/*" /><button id="completeTripBtn" class="primary" type="button">Upload slip &amp; complete trip</button></div>
-        </section>
-        <div class="dialog-actions"><button id="editTripBtn" class="primary" type="button">Edit trip</button><button id="approveTripBtn" class="primary approval-btn owner-only" type="button">Approve trip</button><button id="deleteTripBtn" class="text-btn danger owner-only" type="button">Delete</button></div>
-      </div>
-    </dialog>
-
+    <div id="toast" class="toast" role="status"></div>
     <script src="config.js"></script>
-    <script src="logistics.js"></script>
+    <script src="logistics.js?v=step1-20260722"></script>
   </body>
 </html>
