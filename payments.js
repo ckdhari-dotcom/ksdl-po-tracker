@@ -122,7 +122,12 @@
       button.disabled = true; button.textContent = 'Sending back…';
       await api('/rest/v1/rpc/return_transport_delivery', { method: 'POST', headers: { 'Content-Type': 'application/json', Prefer: 'return=minimal' }, body: JSON.stringify({ delivery_link: linkId, reason }) });
       selectedPayableIds.delete(linkId); $('rejectDeliveryDialog').close(); await loadData(); toast('Delivery sent back to the executive for correction.');
-    } catch (err) { error.textContent = err.message || 'Could not send this delivery back.'; }
+    } catch (err) {
+      const message = err.message || 'Could not send this delivery back.';
+      error.textContent = /return_transport_delivery|schema cache|pgrst202/i.test(message)
+        ? 'Supabase correction setup is not active yet. Run the updated transport-payments SQL, then refresh this page.'
+        : message;
+    }
     finally { button.disabled = false; button.textContent = 'Send back'; }
   }
   function statusClass(status) { return String(status || '').toLowerCase().replaceAll(' ', '-'); }
@@ -169,14 +174,14 @@
   function openPaymentDialog(id) {
     const settlement = settlements.find(item => item.id === id), transporter = transporterById(settlement?.transporter_id), profile = profileOf(transporter); if (!settlement || !profile?.verified_at) { toast('Verify the transporter UPI ID and QR before payment.'); return; }
     $('paymentForm').reset(); $('paymentSettlementId').value = id; $('paymentDate').value = today(); $('paymentError').textContent = ''; $('paymentDialogSummary').textContent = `${settlement.settlement_number} · ${money(settlement.total_amount)}`;
-    const qr = profile.qrLink ? (String(profile.qr_code_url).toLowerCase().endsWith('.pdf') ? `<a class="proof-link" href="${safe(profile.qrLink)}" target="_blank" rel="noopener">Open verified QR</a>` : `<img src="${safe(profile.qrLink)}" alt="Verified transporter QR" />`) : '';
+    const qr = profile.qrLink ? (String(profile.qr_code_url).toLowerCase().endsWith('.pdf') ? `<div class="qr-preview"><a class="qr-open-button" href="${safe(profile.qrLink)}" target="_blank" rel="noopener">Open verified QR PDF</a></div>` : `<div class="qr-preview"><a href="${safe(profile.qrLink)}" target="_blank" rel="noopener" title="Open QR full size"><img src="${safe(profile.qrLink)}" alt="Verified transporter payment QR" /></a><span>Click the QR to open it full-size</span></div>`) : '';
     $('paymentPayeeCard').innerHTML = `${qr}<div><p>Payee name</p><strong>${safe(profile.payee_name)}</strong><p>Verified UPI ID</p><strong>${safe(profile.upi_id)}</strong><p>Amount to pay</p><strong>${money(settlement.total_amount)}</strong><p>Confirm this name again in GPay before paying.</p></div>`; $('paymentDialog').showModal();
   }
   async function savePayment(event) {
     event.preventDefault(); const id = $('paymentSettlementId').value, proof = $('paymentProof').files?.[0], error = $('paymentError'); error.textContent = '';
-    try { const proofPath = await uploadPrivateFile('payment-proofs', id, proof); await api(`/rest/v1/transport_payment_settlements?id=eq.${id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json', Prefer: 'return=minimal' }, body: JSON.stringify({ status: 'Paid', payment_date: $('paymentDate').value, upi_transaction_id: $('paymentUtr').value.trim(), payment_proof_url: proofPath, payment_remarks: $('paymentRemarks').value.trim() || null, paid_by: session.user.id, paid_at: new Date().toISOString() }) }); $('paymentDialog').close(); await loadData(); toast('Payment recorded — awaiting bank reconciliation.'); } catch (err) { error.textContent = err.message || 'Could not record payment.'; }
+    try { const proofPath = proof ? await uploadPrivateFile('payment-proofs', id, proof) : null; await api(`/rest/v1/transport_payment_settlements?id=eq.${id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json', Prefer: 'return=minimal' }, body: JSON.stringify({ status: 'Paid', payment_date: $('paymentDate').value, upi_transaction_id: $('paymentUtr').value.trim() || null, payment_proof_url: proofPath, payment_remarks: $('paymentRemarks').value.trim() || null, paid_by: session.user.id, paid_at: new Date().toISOString() }) }); $('paymentDialog').close(); await loadData(); toast('Payment recorded — awaiting bank reconciliation.'); } catch (err) { error.textContent = err.message || 'Could not record payment.'; }
   }
-  async function reconcileSettlement(id) { if (!confirm('Confirm that the UTR and amount match the bank statement?')) return; try { await api(`/rest/v1/transport_payment_settlements?id=eq.${id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json', Prefer: 'return=minimal' }, body: JSON.stringify({ status: 'Reconciled', reconciled_by: session.user.id, reconciled_at: new Date().toISOString() }) }); await loadData(); toast('Payment reconciled with bank statement.'); } catch (err) { toast(err.message || 'Could not reconcile payment.'); } }
+  async function reconcileSettlement(id) { if (!confirm('Confirm that the payment amount and date match the bank statement?')) return; try { await api(`/rest/v1/transport_payment_settlements?id=eq.${id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json', Prefer: 'return=minimal' }, body: JSON.stringify({ status: 'Reconciled', reconciled_by: session.user.id, reconciled_at: new Date().toISOString() }) }); await loadData(); toast('Payment reconciled with bank statement.'); } catch (err) { toast(err.message || 'Could not reconcile payment.'); } }
 
   function bindEvents() {
     $('loginForm').addEventListener('submit', async event => { event.preventDefault(); $('loginError').textContent = ''; try { await signIn($('emailInput').value.trim(), $('passwordInput').value); await start(); } catch (err) { $('loginError').textContent = err.message || 'Sign in failed.'; } }); $('signOutBtn').addEventListener('click', signOut); $('refreshBtn').addEventListener('click', loadData);

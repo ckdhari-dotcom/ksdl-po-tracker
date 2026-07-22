@@ -7,7 +7,7 @@
     <title>KSDL Transport Payments</title>
     <link rel="stylesheet" href="styles.css" />
     <link rel="stylesheet" href="mobile-filters.css" />
-    <link rel="stylesheet" href="payments.css?v=20260722-4" />
+    <link rel="stylesheet" href="payments.css?v=20260722-7" />
   </head>
   <body>
     <section id="loginScreen" class="login-screen hidden">
@@ -74,7 +74,7 @@
       <div class="modal-header"><div><span class="eyebrow">RECORD GPAY PAYMENT</span><h2 id="paymentDialogTitle">Mark settlement paid</h2><p id="paymentDialogSummary"></p></div><button id="closePaymentDialog" class="icon-btn" type="button" aria-label="Close">×</button></div>
       <input id="paymentSettlementId" type="hidden" />
       <div id="paymentPayeeCard" class="payee-card"></div>
-      <div class="form-grid payment-form-grid"><label>Payment date*<input id="paymentDate" type="date" required /></label><label>UPI transaction ID / UTR*<input id="paymentUtr" required /></label><label class="span-2">GPay payment screenshot*<input id="paymentProof" type="file" accept="image/jpeg,image/png,application/pdf" required /></label><label class="span-2">Remarks<textarea id="paymentRemarks" rows="2"></textarea></label></div>
+      <div class="form-grid payment-form-grid"><label>Payment date*<input id="paymentDate" type="date" required /></label><label>UPI transaction ID / UTR <small>(optional)</small><input id="paymentUtr" /></label><label class="span-2">GPay payment screenshot <small>(optional)</small><input id="paymentProof" type="file" accept="image/jpeg,image/png,application/pdf" /></label><label class="span-2">Remarks<textarea id="paymentRemarks" rows="2"></textarea></label></div>
       <p id="paymentError" class="error" aria-live="polite"></p><div class="modal-actions"><span></span><button id="cancelPaymentBtn" type="button">Cancel</button><button class="primary">Save payment</button></div>
     </form></dialog>
 
@@ -87,6 +87,6 @@
     </form></dialog>
 
     <div id="toast" class="toast" role="status"></div>
-    <script src="config.js"></script><script src="payments.js?v=20260722-5"></script>
+    <script src="config.js"></script><script src="payments.js?v=20260722-7"></script>
   </body>
 </html>
