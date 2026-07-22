@@ -72,11 +72,11 @@
     await api(`/storage/v1/object/${NOTE_BUCKET}/${path}`, { method: 'POST', headers: { 'Content-Type': file.type || 'application/octet-stream', 'x-upsert': 'true' }, body: file });
     return path;
   }
-  async function uploadTripDeliverySlip(tripId, file) {
+  async function uploadTripDeliverySlip(tripId, poId, file) {
     if (!file) throw new Error('Upload the signed delivery slip before completing the trip.');
     if (file.size > 10 * 1024 * 1024) throw new Error('Delivery slip must be 10 MB or smaller.');
     const fileName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
-    const path = `trip-delivery-slips/${tripId}/${Date.now()}-${fileName}`;
+    const path = `trip-delivery-slips/${tripId}/${poId}/${Date.now()}-${fileName}`;
     await api(`/storage/v1/object/${NOTE_BUCKET}/${path}`, { method: 'POST', headers: { 'Content-Type': file.type || 'application/octet-stream', 'x-upsert': 'true' }, body: file });
     return path;
   }
@@ -335,26 +335,36 @@
     if ($('completeTripDialog').open) $('completeTripDialog').close();
     completingTripId = null; $('completeTripForm').reset(); $('completeTripError').textContent = '';
   }
+  function updateCompleteTripTotal() {
+    const total = [...document.querySelectorAll('.complete-po-cost')].reduce((sum, input) => sum + Number(input.value || 0), 0);
+    $('completeTripTotal').textContent = money(total); return total;
+  }
   function openCompleteTrip(tripId) {
     const trip = trips.find(item => item.id === tripId); if (!trip) return;
     const incompleteInvoice = (trip.delivery_trip_pos || []).find(link => !(link.invoice_number || trip.invoice_number) || !(link.invoice_date || trip.invoice_date) || !(link.invoice_attachment_url || trip.invoice_attachment_url));
     if (incompleteInvoice) { toast(`Edit trip and complete the invoice details for PO ${incompleteInvoice.purchase_orders?.po_number || ''}.`); return; }
     completingTripId = tripId; $('completeTripForm').reset(); $('completeTripError').textContent = '';
-    const poLabels = (trip.delivery_trip_pos || []).map(link => `${link.purchase_orders?.po_number || 'PO'}${link.purchase_orders?.delivery_location ? ` (${link.purchase_orders.delivery_location})` : ''}`);
-    $('completeTripSummary').textContent = poLabels.length ? `Complete ${poLabels.join(', ')}` : 'Upload the signed delivery slip and confirm the final transport cost.';
-    $('completeTripCost').value = Number(trip.actual_freight || 0) || '';
+    const links = trip.delivery_trip_pos || [];
+    $('completeTripSummary').textContent = `${links.length} PO${links.length === 1 ? '' : 's'} in this trip — complete each delivery separately.`;
+    $('completeTripPoDetails').innerHTML = links.map(link => `<tr data-po-id="${link.purchase_order_id}">
+      <td><span class="po-main">${safe(link.purchase_orders?.po_number || 'PO')}</span><span class="po-secondary">${safe(link.purchase_orders?.delivery_location || 'Location pending')}</span></td>
+      <td><input class="complete-po-cost" type="number" min="0" step="0.01" placeholder="0" value="${Number(link.allocated_cost || 0) || ''}" /></td>
+      <td><input class="complete-po-slip" type="file" accept="application/pdf,image/jpeg,image/png" required /></td>
+    </tr>`).join('');
+    updateCompleteTripTotal();
     $('completeTripDialog').showModal();
   }
   async function completeTrip(event) {
     event.preventDefault(); const error = $('completeTripError'); error.textContent = '';
-    const trip = trips.find(item => item.id === completingTripId), slip = $('completeTripSlip').files?.[0];
+    const trip = trips.find(item => item.id === completingTripId);
     if (!trip) { error.textContent = 'Trip not found. Refresh and try again.'; return; }
-    if (!slip) { error.textContent = 'Upload the signed delivery slip first.'; return; }
+    const details = [...$('completeTripPoDetails').querySelectorAll('tr')].map(row => ({ poId: row.dataset.poId, finalCost: Number(row.querySelector('.complete-po-cost').value || 0), slip: row.querySelector('.complete-po-slip').files?.[0], poNumber: row.querySelector('.po-main')?.textContent || 'PO' }));
+    const missingSlip = details.find(detail => !detail.slip); if (missingSlip) { error.textContent = `Upload the signed delivery slip for PO ${missingSlip.poNumber}.`; return; }
     const button = $('completeTripBtn');
     try {
       button.disabled = true; button.textContent = 'Completing delivery…';
-      const notePath = await uploadTripDeliverySlip(trip.id, slip), finalCost = Number($('completeTripCost').value || 0);
-      await api('/rest/v1/rpc/complete_delivery_trip', { method: 'POST', headers: { 'Content-Type': 'application/json', Prefer: 'return=minimal' }, body: JSON.stringify({ trip: trip.id, note_path: notePath, final_cost: finalCost }) });
+      const deliveries = await Promise.all(details.map(async detail => ({ purchase_order_id: detail.poId, note_path: await uploadTripDeliverySlip(trip.id, detail.poId, detail.slip), final_cost: detail.finalCost })));
+      await api('/rest/v1/rpc/complete_delivery_trip', { method: 'POST', headers: { 'Content-Type': 'application/json', Prefer: 'return=minimal' }, body: JSON.stringify({ trip: trip.id, deliveries }) });
       closeCompleteTripDialog(); await loadData(); toast('Delivery completed — linked POs updated in the owner tracker.');
     } catch (err) { error.textContent = err.message || 'Could not complete the delivery.'; }
     finally { button.disabled = false; button.textContent = 'Complete delivery'; }
@@ -369,6 +379,7 @@
     $('closeTripDialogBtn').addEventListener('click', closeTripDialog); $('cancelTripBtn').addEventListener('click', closeTripDialog);
     $('tripPoDetails').addEventListener('change', event => { if (event.target.matches('.po-invoice-file')) handleInvoiceFile(event.target); });
     $('completeTripForm').addEventListener('submit', completeTrip); $('closeCompleteTripBtn').addEventListener('click', closeCompleteTripDialog); $('cancelCompleteTripBtn').addEventListener('click', closeCompleteTripDialog);
+    $('completeTripPoDetails').addEventListener('input', event => { if (event.target.matches('.complete-po-cost')) updateCompleteTripTotal(); });
     $('inTripBody').addEventListener('click', event => {
       const editButton = event.target.closest('.edit-trip-btn'), completeButton = event.target.closest('.complete-trip-btn');
       if (editButton) openEditTrip(editButton.dataset.tripId); else if (completeButton) openCompleteTrip(completeButton.dataset.tripId);
