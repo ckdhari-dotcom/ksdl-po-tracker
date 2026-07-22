@@ -7,7 +7,7 @@
   const SESSION_KEY = 'ksdl-po-tracker-session';
   const PAYMENT_BUCKET = 'transport-payments';
   const INR = new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 });
-  let session = null, transporters = [], payables = [], settlements = [], settledLinkIds = new Set(), selectedPayableIds = new Set();
+  let session = null, refreshPromise = null, transporters = [], payables = [], settlements = [], settledLinkIds = new Set(), selectedPayableIds = new Set();
 
   const $ = id => document.getElementById(id);
   const money = value => INR.format(Number(value || 0));
@@ -17,13 +17,43 @@
   const profileOf = transporter => Array.isArray(transporter?.transporter_payment_profiles) ? transporter.transporter_payment_profiles[0] : transporter?.transporter_payment_profiles;
   function show(id) { $(id).classList.remove('hidden'); } function hide(id) { $(id).classList.add('hidden'); }
   function headers(extra = {}) { return { apikey: PUBLIC_KEY, Authorization: `Bearer ${session?.access_token || PUBLIC_KEY}`, ...extra }; }
-  async function api(path, options = {}) {
-    const response = await fetch(`${BASE_URL}${path}`, { ...options, headers: headers(options.headers || {}) }); const text = await response.text(); let data = null;
+  function saveSession(nextSession) { session = nextSession; sessionStorage.setItem(SESSION_KEY, JSON.stringify(session)); }
+  function tokenExpiresSoon() {
+    if (!session?.access_token) return false;
+    let expiresAt = Number(session.expires_at || 0);
+    if (!expiresAt) {
+      try { const payload = session.access_token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/'); expiresAt = Number(JSON.parse(atob(payload.padEnd(Math.ceil(payload.length / 4) * 4, '='))).exp || 0); } catch (_) { return false; }
+    }
+    return expiresAt * 1000 <= Date.now() + 60000;
+  }
+  async function refreshSession() {
+    if (refreshPromise) return refreshPromise;
+    if (!session?.refresh_token) throw new Error('Your session has expired. Please sign in again.');
+    refreshPromise = (async () => {
+      const response = await fetch(`${BASE_URL}/auth/v1/token?grant_type=refresh_token`, {
+        method: 'POST', headers: { apikey: PUBLIC_KEY, 'Content-Type': 'application/json' }, body: JSON.stringify({ refresh_token: session.refresh_token })
+      });
+      const text = await response.text(); let data = null;
+      if (text) { try { data = JSON.parse(text); } catch (_) { data = text; } }
+      if (!response.ok || !data?.access_token) throw new Error(data?.message || data?.error_description || 'Your session has expired. Please sign in again.');
+      saveSession({ ...session, ...data }); return session;
+    })();
+    try { return await refreshPromise; } finally { refreshPromise = null; }
+  }
+  async function api(path, options = {}, allowRefreshRetry = true) {
+    const tokenRequest = path.startsWith('/auth/v1/token');
+    if (!tokenRequest && session?.refresh_token && tokenExpiresSoon()) await refreshSession();
+    const requestHeaders = tokenRequest ? { apikey: PUBLIC_KEY, Authorization: `Bearer ${PUBLIC_KEY}`, ...(options.headers || {}) } : headers(options.headers || {});
+    const response = await fetch(`${BASE_URL}${path}`, { ...options, headers: requestHeaders }); const text = await response.text(); let data = null;
     if (text) { try { data = JSON.parse(text); } catch (_) { data = text; } }
-    if (!response.ok) throw new Error(data?.message || data?.error_description || text || `Request failed (${response.status})`); return data;
+    const message = data?.message || data?.error_description || text || `Request failed (${response.status})`;
+    if (!response.ok && allowRefreshRetry && !tokenRequest && session?.refresh_token && (response.status === 401 || /exp(?:ired)?|jwt|timestamp check failed/i.test(String(message)))) {
+      await refreshSession(); return api(path, options, false);
+    }
+    if (!response.ok) throw new Error(message); return data;
   }
   function toast(message) { const el = $('toast'); el.textContent = message; el.classList.add('show'); clearTimeout(toast.timer); toast.timer = setTimeout(() => el.classList.remove('show'), 3000); }
-  async function signIn(email, password) { session = await api('/auth/v1/token?grant_type=password', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, password }) }); sessionStorage.setItem(SESSION_KEY, JSON.stringify(session)); }
+  async function signIn(email, password) { saveSession(await api('/auth/v1/token?grant_type=password', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, password }) })); }
   async function signOut() { try { await api('/auth/v1/logout', { method: 'POST' }); } catch (_) { /* local sign-out still succeeds */ } session = null; sessionStorage.removeItem(SESSION_KEY); hide('app'); show('loginScreen'); }
   async function ensureOwner() { const role = await api('/rest/v1/rpc/po_tracker_role', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' }); if (role !== 'owner') throw new Error('Only the owner can access transport payments.'); }
 
@@ -59,14 +89,24 @@
     const current = $('payableTransporterFilter').value; $('payableTransporterFilter').innerHTML = '<option value="">All transporters</option>' + transporters.map(item => `<option value="${item.id}">${safe(item.name)}</option>`).join(''); $('payableTransporterFilter').value = current;
   }
   function renderTransporters() {
-    $('transporterBody').innerHTML = transporters.map(transporter => { const profile = profileOf(transporter); return `<tr><td><strong>${safe(transporter.name)}</strong><span class="muted-line">${profile?.verified_at ? 'Payment details verified' : 'Verification pending'}</span></td><td>${safe(transporter.phone || '—')}</td><td>${safe(profile?.payee_name || '—')}<span class="muted-line">${safe(profile?.upi_id || '')}</span>${profile?.qrLink ? `<a class="proof-link" href="${safe(profile.qrLink)}" target="_blank" rel="noopener">View private QR</a>` : ''}</td><td>${safe(profile?.weekly_payment_day || 'Friday')}</td><td><span class="master-status ${transporter.active ? '' : 'inactive'}">${transporter.active ? 'Active' : 'Inactive'}</span></td><td><button class="text-btn edit-transporter" data-id="${transporter.id}" type="button">Edit</button></td></tr>`; }).join('');
+    $('transporterBody').innerHTML = transporters.map(transporter => { const profile = profileOf(transporter); return `<tr><td><strong>${safe(transporter.name)}</strong><span class="muted-line">${profile?.verified_at ? 'Payment details verified' : 'Verification pending'}</span></td><td>${safe(transporter.phone || '—')}</td><td>${safe(profile?.payee_name || '—')}<span class="muted-line">${safe(profile?.upi_id || '')}</span>${profile?.qrLink ? `<a class="proof-link" href="${safe(profile.qrLink)}" target="_blank" rel="noopener">View private QR</a>` : ''}</td><td><span class="master-status ${transporter.active ? '' : 'inactive'}">${transporter.active ? 'Active' : 'Inactive'}</span></td><td><button class="text-btn edit-transporter" data-id="${transporter.id}" type="button">Edit</button></td></tr>`; }).join('');
     $('transporterEmpty').classList.toggle('hidden', transporters.length > 0); renderTransporterOptions();
   }
   function renderPayables() {
-    const rows = filteredPayables(); $('payableBody').innerHTML = rows.map(item => { const trip = item.delivery_trips || {}, po = item.purchase_orders || {}, master = transporterById(trip.transporter_id); return `<tr class="${selectedPayableIds.has(item.id) ? 'selected-payable' : ''}"><td><input class="payable-choice" type="checkbox" value="${item.id}" ${selectedPayableIds.has(item.id) ? 'checked' : ''} /></td><td>${safe(master?.name || trip.transporter || 'Unassigned')}</td><td>${iso(po.delivery_date || String(item.delivered_at || '').slice(0, 10))}</td><td><strong>${safe(po.po_number || 'PO')}</strong><span class="muted-line">${safe(po.delivery_location || 'Location pending')}</span></td><td>${iso(trip.trip_date)}<span class="muted-line">${safe(trip.vehicle_number || 'Vehicle pending')}</span></td><td>${money(item.allocated_cost)}</td></tr>`; }).join(''); $('payableEmpty').classList.toggle('hidden', rows.length > 0);
+    const rows = filteredPayables(); $('payableBody').innerHTML = rows.map(item => { const trip = item.delivery_trips || {}, po = item.purchase_orders || {}, master = transporterById(trip.transporter_id); return `<tr class="${selectedPayableIds.has(item.id) ? 'selected-payable' : ''}"><td><input class="payable-choice" type="checkbox" value="${item.id}" ${selectedPayableIds.has(item.id) ? 'checked' : ''} /></td><td>${safe(master?.name || trip.transporter || 'Unassigned')}</td><td>${iso(po.delivery_date || String(item.delivered_at || '').slice(0, 10))}</td><td><strong>${safe(po.po_number || 'PO')}</strong><span class="muted-line">${safe(po.delivery_location || 'Location pending')}</span></td><td>${iso(trip.trip_date)}<span class="muted-line">${safe(trip.vehicle_number || 'Vehicle pending')}</span></td><td><div class="cost-editor"><input class="payable-cost-input" type="number" min="0" step="0.01" value="${Number(item.allocated_cost || 0)}" aria-label="Final transport cost for ${safe(po.po_number || 'PO')}" /><button class="text-btn save-payable-cost" data-id="${item.id}" type="button">Save</button></div></td></tr>`; }).join(''); $('payableEmpty').classList.toggle('hidden', rows.length > 0);
     const visibleIds = rows.map(item => item.id), selectedVisible = visibleIds.filter(id => selectedPayableIds.has(id)); $('selectAllPayables').checked = visibleIds.length > 0 && selectedVisible.length === visibleIds.length; $('selectAllPayables').indeterminate = selectedVisible.length > 0 && selectedVisible.length < visibleIds.length; renderSelection();
   }
   function renderSelection() { const chosen = outstandingPayables().filter(item => selectedPayableIds.has(item.id)), total = chosen.reduce((sum, item) => sum + Number(item.allocated_cost || 0), 0); $('selectedDeliveryCount').textContent = chosen.length; $('selectedDeliveryTotal').textContent = money(total); $('createSettlementBtn').disabled = chosen.length === 0; }
+  async function savePayableCost(linkId, button) {
+    const item = outstandingPayables().find(record => record.id === linkId), row = button.closest('tr'), input = row?.querySelector('.payable-cost-input'), amount = Number(input?.value);
+    if (!item || !Number.isFinite(amount) || amount < 0) { toast('Enter a valid transport cost.'); return; }
+    try {
+      button.disabled = true; button.textContent = 'Saving…';
+      await api('/rest/v1/rpc/update_transport_delivery_cost', { method: 'POST', headers: { 'Content-Type': 'application/json', Prefer: 'return=minimal' }, body: JSON.stringify({ delivery_link: item.id, new_cost: amount }) });
+      await loadData(); toast('Final PO transport cost saved.');
+    } catch (err) { toast(err.message || 'Could not update the transport cost.'); }
+    finally { button.disabled = false; button.textContent = 'Save'; }
+  }
   function statusClass(status) { return String(status || '').toLowerCase().replaceAll(' ', '-'); }
   function renderSettlements() {
     $('settlementBody').innerHTML = settlements.map(settlement => { const items = settlement.transport_payment_items || [], details = items.map(item => `${item.purchase_orders?.po_number || 'PO'} · ${money(item.amount)}`).join('<br>'); let actions = '';
@@ -86,8 +126,8 @@
 
   function openTransporterDialog(id = '') {
     $('transporterForm').reset(); $('transporterId').value = id; $('transporterError').textContent = ''; const transporter = transporterById(id), profile = profileOf(transporter); $('transporterDialogTitle').textContent = transporter ? 'Edit transporter' : 'Add transporter';
-    if (transporter) { $('transporterName').value = transporter.name || ''; $('transporterPhone').value = transporter.phone || ''; $('transporterActive').checked = Boolean(transporter.active); $('transporterUpi').value = profile?.upi_id || ''; $('transporterPayee').value = profile?.payee_name || ''; $('transporterPaymentDay').value = profile?.weekly_payment_day || 'Friday'; $('transporterVerified').checked = Boolean(profile?.verified_at); $('existingQrNote').textContent = profile?.qr_code_url ? 'Existing QR is saved. Upload only to replace it.' : ''; }
-    else { $('transporterActive').checked = true; $('transporterPaymentDay').value = 'Friday'; $('existingQrNote').textContent = ''; }
+    if (transporter) { $('transporterName').value = transporter.name || ''; $('transporterPhone').value = transporter.phone || ''; $('transporterActive').checked = Boolean(transporter.active); $('transporterUpi').value = profile?.upi_id || ''; $('transporterPayee').value = profile?.payee_name || ''; $('transporterVerified').checked = Boolean(profile?.verified_at); $('existingQrNote').textContent = profile?.qr_code_url ? 'Existing QR is saved. Upload only to replace it.' : ''; }
+    else { $('transporterActive').checked = true; $('existingQrNote').textContent = ''; }
     $('transporterDialog').showModal();
   }
   async function saveTransporter(event) {
@@ -95,7 +135,7 @@
     try { let qrPath = existingProfile?.qr_code_url || ''; if (qrFile) qrPath = await uploadPrivateFile('transporter-qr', id, qrFile); if (!qrPath) throw new Error('Upload and verify the transporter QR code.');
       const masterPayload = { id, name: $('transporterName').value.trim(), phone: $('transporterPhone').value.trim() || null, active: $('transporterActive').checked };
       if (existing) await api(`/rest/v1/transporters?id=eq.${id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json', Prefer: 'return=minimal' }, body: JSON.stringify(masterPayload) }); else await api('/rest/v1/transporters', { method: 'POST', headers: { 'Content-Type': 'application/json', Prefer: 'return=minimal' }, body: JSON.stringify(masterPayload) });
-      const verified = $('transporterVerified').checked, profilePayload = { transporter_id: id, upi_id: $('transporterUpi').value.trim(), payee_name: $('transporterPayee').value.trim(), qr_code_url: qrPath, weekly_payment_day: $('transporterPaymentDay').value, verified_at: verified ? new Date().toISOString() : null, verified_by: verified ? session.user.id : null, updated_at: new Date().toISOString() };
+      const verified = $('transporterVerified').checked, profilePayload = { transporter_id: id, upi_id: $('transporterUpi').value.trim(), payee_name: $('transporterPayee').value.trim(), qr_code_url: qrPath, verified_at: verified ? new Date().toISOString() : null, verified_by: verified ? session.user.id : null, updated_at: new Date().toISOString() };
       await api('/rest/v1/transporter_payment_profiles?on_conflict=transporter_id', { method: 'POST', headers: { 'Content-Type': 'application/json', Prefer: 'resolution=merge-duplicates,return=minimal' }, body: JSON.stringify(profilePayload) });
       await api(`/rest/v1/delivery_trips?transporter_id=is.null&transporter=eq.${encodeURIComponent(masterPayload.name)}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json', Prefer: 'return=minimal' }, body: JSON.stringify({ transporter_id: id }) });
       $('transporterDialog').close(); await loadData(); toast('Transporter Master updated.');
@@ -105,7 +145,7 @@
   async function createSettlement() {
     const chosen = outstandingPayables().filter(item => selectedPayableIds.has(item.id)); if (!chosen.length) return; const transporterIds = [...new Set(chosen.map(item => item.delivery_trips?.transporter_id).filter(Boolean))]; if (transporterIds.length !== 1) { toast('Select deliveries for only one transporter.'); return; }
     const dates = chosen.map(item => item.purchase_orders?.delivery_date || String(item.delivered_at || '').slice(0, 10)).filter(Boolean).sort(), from = $('payableFrom').value || dates[0], to = $('payableTo').value || dates[dates.length - 1];
-    try { await api('/rest/v1/rpc/create_transport_settlement', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ transporter: transporterIds[0], delivery_links: chosen.map(item => item.id), period_start: from, period_end: to }) }); selectedPayableIds.clear(); await loadData(); toast('Weekly settlement created as Draft.'); } catch (err) { toast(err.message || 'Could not create settlement.'); }
+    try { await api('/rest/v1/rpc/create_transport_settlement', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ transporter: transporterIds[0], delivery_links: chosen.map(item => item.id), period_start: from, period_end: to }) }); selectedPayableIds.clear(); await loadData(); toast('Payment record created as Draft.'); } catch (err) { toast(err.message || 'Could not create payment record.'); }
   }
   async function approveSettlement(id) { try { await api(`/rest/v1/transport_payment_settlements?id=eq.${id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json', Prefer: 'return=minimal' }, body: JSON.stringify({ status: 'Approved', approved_by: session.user.id, approved_at: new Date().toISOString() }) }); await loadData(); toast('Settlement approved for payment.'); } catch (err) { toast(err.message || 'Could not approve settlement.'); } }
   function openPaymentDialog(id) {
@@ -124,11 +164,11 @@
     $('loginForm').addEventListener('submit', async event => { event.preventDefault(); $('loginError').textContent = ''; try { await signIn($('emailInput').value.trim(), $('passwordInput').value); await start(); } catch (err) { $('loginError').textContent = err.message || 'Sign in failed.'; } }); $('signOutBtn').addEventListener('click', signOut); $('refreshBtn').addEventListener('click', loadData);
     $('addTransporterBtn').addEventListener('click', () => openTransporterDialog()); $('transporterBody').addEventListener('click', event => { const button = event.target.closest('.edit-transporter'); if (button) openTransporterDialog(button.dataset.id); }); $('transporterForm').addEventListener('submit', saveTransporter); $('closeTransporterDialog').addEventListener('click', () => $('transporterDialog').close()); $('cancelTransporterBtn').addEventListener('click', () => $('transporterDialog').close());
     ['payableTransporterFilter', 'payableFrom', 'payableTo'].forEach(id => { $(id).addEventListener('change', renderPayables); $(id).addEventListener('input', renderPayables); }); $('clearPayableFilters').addEventListener('click', () => { $('payableTransporterFilter').value = ''; $('payableFrom').value = ''; $('payableTo').value = ''; renderPayables(); });
-    $('payableBody').addEventListener('change', event => { if (!event.target.matches('.payable-choice')) return; if (event.target.checked) selectedPayableIds.add(event.target.value); else selectedPayableIds.delete(event.target.value); renderPayables(); }); $('selectAllPayables').addEventListener('change', event => { filteredPayables().forEach(item => event.target.checked ? selectedPayableIds.add(item.id) : selectedPayableIds.delete(item.id)); renderPayables(); }); $('createSettlementBtn').addEventListener('click', createSettlement);
+    $('payableBody').addEventListener('change', event => { if (!event.target.matches('.payable-choice')) return; if (event.target.checked) selectedPayableIds.add(event.target.value); else selectedPayableIds.delete(event.target.value); renderPayables(); }); $('payableBody').addEventListener('click', event => { const button = event.target.closest('.save-payable-cost'); if (button) savePayableCost(button.dataset.id, button); }); $('selectAllPayables').addEventListener('change', event => { filteredPayables().forEach(item => event.target.checked ? selectedPayableIds.add(item.id) : selectedPayableIds.delete(item.id)); renderPayables(); }); $('createSettlementBtn').addEventListener('click', createSettlement);
     $('settlementBody').addEventListener('click', event => { const approve = event.target.closest('.approve-settlement'), pay = event.target.closest('.pay-settlement'), reconcile = event.target.closest('.reconcile-settlement'); if (approve) approveSettlement(approve.dataset.id); else if (pay) openPaymentDialog(pay.dataset.id); else if (reconcile) reconcileSettlement(reconcile.dataset.id); }); $('paymentForm').addEventListener('submit', savePayment); $('closePaymentDialog').addEventListener('click', () => $('paymentDialog').close()); $('cancelPaymentBtn').addEventListener('click', () => $('paymentDialog').close());
   }
   async function start() { await ensureOwner(); $('signedInAs').textContent = session.user?.email || ''; hide('loginScreen'); show('app'); await loadData(); }
 
   bindEvents(); try { session = JSON.parse(sessionStorage.getItem(SESSION_KEY) || 'null'); } catch (_) { session = null; }
-  if (session?.access_token && (!session.expires_at || session.expires_at * 1000 > Date.now() + 30000)) start().catch(err => { hide('app'); show('loginScreen'); $('loginError').textContent = err.message; }); else { sessionStorage.removeItem(SESSION_KEY); show('loginScreen'); }
+  if (session?.access_token && session?.refresh_token) start().catch(err => { hide('app'); show('loginScreen'); $('loginError').textContent = err.message; }); else { sessionStorage.removeItem(SESSION_KEY); show('loginScreen'); }
 })();

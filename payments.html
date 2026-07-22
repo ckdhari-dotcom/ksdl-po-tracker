@@ -7,7 +7,7 @@
     <title>KSDL Transport Payments</title>
     <link rel="stylesheet" href="styles.css" />
     <link rel="stylesheet" href="mobile-filters.css" />
-    <link rel="stylesheet" href="payments.css?v=20260722-2" />
+    <link rel="stylesheet" href="payments.css?v=20260722-3" />
   </head>
   <body>
     <section id="loginScreen" class="login-screen hidden">
@@ -35,26 +35,26 @@
 
       <section class="payment-card">
         <div class="section-head"><div><span class="eyebrow">SETUP</span><h2>Transporter Master</h2><p>Active names appear in the executive trip dropdown. Payment details and QR codes remain owner-only.</p></div><button id="addTransporterBtn" class="primary" type="button">+ Add transporter</button></div>
-        <div class="table-wrap"><table class="payment-table"><thead><tr><th>Transporter</th><th>Contact</th><th>Verified payee</th><th>Weekly payment</th><th>Status</th><th>Action</th></tr></thead><tbody id="transporterBody"></tbody></table></div>
+        <div class="table-wrap"><table class="payment-table transporter-table"><thead><tr><th>Transporter</th><th>Contact</th><th>Verified payee</th><th>Status</th><th>Action</th></tr></thead><tbody id="transporterBody"></tbody></table></div>
         <div id="transporterEmpty" class="empty-state"><h3>No transporters added</h3><p>Add the first tempo owner before an executive creates a new trip.</p></div>
       </section>
 
       <section class="payment-card">
-        <div class="section-head"><div><span class="eyebrow">WEEKLY PAYABLES</span><h2>Delivered POs awaiting settlement</h2><p>Select completed deliveries for one transporter and create a weekly settlement.</p></div></div>
+        <div class="section-head"><div><span class="eyebrow">OUTSTANDING PAYABLES</span><h2>Delivered POs awaiting settlement</h2><p>Edit and save the final cost if required. Then select any delivered POs for one transporter and create a payment record whenever you want.</p></div></div>
         <div class="payment-filters">
           <label>Transporter<select id="payableTransporterFilter"><option value="">All transporters</option></select></label>
           <label>Delivered from<input id="payableFrom" type="date" /></label><label>Delivered to<input id="payableTo" type="date" /></label>
           <button id="clearPayableFilters" class="text-btn" type="button">Clear</button>
         </div>
-        <div class="settlement-selection"><span><strong id="selectedDeliveryCount">0</strong> deliveries selected</span><span>Total <strong id="selectedDeliveryTotal">₹0</strong></span><button id="createSettlementBtn" class="primary" type="button" disabled>Create weekly settlement</button></div>
+        <div class="settlement-selection"><span><strong id="selectedDeliveryCount">0</strong> deliveries selected</span><span>Total <strong id="selectedDeliveryTotal">₹0</strong></span><button id="createSettlementBtn" class="primary" type="button" disabled>Create payment record</button></div>
         <div class="table-wrap"><table class="payment-table payable-table"><thead><tr><th><input id="selectAllPayables" type="checkbox" aria-label="Select all visible deliveries" /></th><th>Transporter</th><th>Delivered</th><th>PO / location</th><th>Trip / vehicle</th><th>Final cost</th></tr></thead><tbody id="payableBody"></tbody></table></div>
         <div id="payableEmpty" class="empty-state"><h3>No outstanding deliveries</h3><p>Completed deliveries that are not yet included in a settlement will appear here.</p></div>
       </section>
 
       <section class="payment-card">
-        <div class="section-head"><div><span class="eyebrow">PAYMENT REGISTER</span><h2>Weekly settlements</h2><p>Approve, record the GPay payment and reconcile it against the bank statement.</p></div></div>
+        <div class="section-head"><div><span class="eyebrow">PAYMENT REGISTER</span><h2>Transport payment records</h2><p>Create and pay at any time, then reconcile the GPay transaction against the bank statement.</p></div></div>
         <div class="table-wrap"><table class="payment-table settlement-table"><thead><tr><th>Settlement</th><th>Transporter / period</th><th>Deliveries</th><th>Total</th><th>Status</th><th>Payment proof</th><th>Action</th></tr></thead><tbody id="settlementBody"></tbody></table></div>
-        <div id="settlementEmpty" class="empty-state"><h3>No settlements created</h3><p>Create a weekly settlement from outstanding delivered POs.</p></div>
+        <div id="settlementEmpty" class="empty-state"><h3>No payment records created</h3><p>Select outstanding delivered POs whenever you are ready to pay.</p></div>
       </section>
     </main>
 
@@ -64,8 +64,7 @@
       <div class="form-grid payment-form-grid">
         <label>Transporter / tempo owner name*<input id="transporterName" required /></label><label>Phone number<input id="transporterPhone" inputmode="tel" /></label>
         <label>Verified UPI ID*<input id="transporterUpi" required placeholder="name@bank" /></label><label>Payee name shown in UPI*<input id="transporterPayee" required /></label>
-        <label>Weekly payment day<select id="transporterPaymentDay"><option>Monday</option><option>Tuesday</option><option>Wednesday</option><option>Thursday</option><option selected>Friday</option><option>Saturday</option><option>Sunday</option></select></label>
-        <label>QR code image<input id="transporterQr" type="file" accept="image/jpeg,image/png,application/pdf" /><small id="existingQrNote"></small></label>
+        <label class="span-2">QR code image<input id="transporterQr" type="file" accept="image/jpeg,image/png,application/pdf" /><small id="existingQrNote"></small></label>
         <label class="check-label"><input id="transporterVerified" type="checkbox" /> Owner verified UPI ID, payee name and QR</label><label class="check-label"><input id="transporterActive" type="checkbox" checked /> Active transporter</label>
       </div>
       <p id="transporterError" class="error" aria-live="polite"></p><div class="modal-actions"><span></span><button id="cancelTransporterBtn" type="button">Cancel</button><button class="primary">Save transporter</button></div>
@@ -80,6 +79,6 @@
     </form></dialog>
 
     <div id="toast" class="toast" role="status"></div>
-    <script src="config.js"></script><script src="payments.js?v=20260722-2"></script>
+    <script src="config.js"></script><script src="payments.js?v=20260722-3"></script>
   </body>
 </html>
