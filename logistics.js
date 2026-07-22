@@ -10,6 +10,10 @@
   const CLOSED_TRIP_STATUSES = ['Delivered', 'Cancelled'];
   const INR = new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 });
 
+  if (window.pdfjsLib) {
+    window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+  }
+
   let session = null;
   let records = [];
   let trips = [];
@@ -65,6 +69,92 @@
     const path = `trip-invoices/${tripId}/${poId}/${Date.now()}-${fileName}`;
     await api(`/storage/v1/object/${NOTE_BUCKET}/${path}`, { method: 'POST', headers: { 'Content-Type': file.type || 'application/octet-stream', 'x-upsert': 'true' }, body: file });
     return path;
+  }
+
+  function normalizePoNumber(value) { return String(value || '').replace(/\D/g, ''); }
+  function tallyDateToIso(value) {
+    const match = String(value || '').match(/(\d{1,2})[-\s/]([A-Za-z]{3,9})[-\s/](\d{2,4})/);
+    if (!match) return '';
+    const months = { jan: 1, january: 1, feb: 2, february: 2, mar: 3, march: 3, apr: 4, april: 4, may: 5, jun: 6, june: 6, jul: 7, july: 7, aug: 8, august: 8, sep: 9, sept: 9, september: 9, oct: 10, october: 10, nov: 11, november: 11, dec: 12, december: 12 };
+    const month = months[match[2].toLowerCase()];
+    if (!month) return '';
+    const year = match[3].length === 2 ? 2000 + Number(match[3]) : Number(match[3]);
+    return `${year}-${String(month).padStart(2, '0')}-${String(Number(match[1])).padStart(2, '0')}`;
+  }
+  function nearbyValue(lines, labelPattern, valuePattern, lookAhead = 8) {
+    const index = lines.findIndex(line => labelPattern.test(line));
+    if (index < 0) return '';
+    return lines.slice(index, index + lookAhead).join(' ').match(valuePattern)?.[1] || '';
+  }
+  async function readPdfLines(file) {
+    if (!window.pdfjsLib) throw new Error('The PDF reader did not load. Check the internet connection and try again.');
+    const pdf = await window.pdfjsLib.getDocument({ data: await file.arrayBuffer() }).promise;
+    const pages = [];
+    for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber += 1) {
+      const page = await pdf.getPage(pageNumber);
+      const content = await page.getTextContent();
+      const positioned = content.items
+        .filter(item => String(item.str || '').trim())
+        .map(item => ({ text: String(item.str).trim(), x: item.transform?.[4] || 0, y: item.transform?.[5] || 0 }));
+      const rows = [];
+      positioned.sort((a, b) => Math.abs(b.y - a.y) > 2 ? b.y - a.y : a.x - b.x).forEach(item => {
+        let row = rows.find(candidate => Math.abs(candidate.y - item.y) <= 2);
+        if (!row) { row = { y: item.y, items: [] }; rows.push(row); }
+        row.items.push(item);
+      });
+      pages.push(rows.sort((a, b) => b.y - a.y).map(row => row.items.sort((a, b) => a.x - b.x).map(item => item.text).join(' ').replace(/\s+/g, ' ').trim()));
+    }
+    return pages.flat();
+  }
+  function parseTallyInvoice(lines) {
+    const flat = lines.join(' ').replace(/\s+/g, ' ');
+    const invoiceNumber = flat.match(/\b(BMAG\/\d{2}-\d{2}\/\d{3,8})\b/i)?.[1] || flat.match(/\b([A-Z]{2,10}[A-Z0-9 -]*\/\d{2}-\d{2}\/\d{3,8})\b/i)?.[1]?.replace(/\s+/g, ' ') || '';
+    let invoiceDate = '';
+    const invoiceLineIndex = lines.findIndex(line => invoiceNumber && line.includes(invoiceNumber));
+    if (invoiceLineIndex >= 0) invoiceDate = lines.slice(invoiceLineIndex, invoiceLineIndex + 6).join(' ').match(/\b(\d{1,2}[-\s/][A-Za-z]{3,9}[-\s/]\d{2,4})\b/)?.[1] || '';
+    if (!invoiceDate) invoiceDate = nearbyValue(lines, /\bDated\b/i, /\b(\d{1,2}[-\s/][A-Za-z]{3,9}[-\s/]\d{2,4})\b/, 5);
+    const poNumber = nearbyValue(lines, /Buyer'?s\s+Order\s+No/i, /\b(\d{8,12})\b/, 10);
+    let destination = nearbyValue(lines, /\bDestination\b/i, /\bDestination\b\s*[:\-]?\s*([A-Za-z][A-Za-z .'-]{1,45})/i, 3).trim();
+    destination = destination.replace(/\s+(Terms|Dispatch|Dated|Buyer|Mode|Other)\b.*$/i, '').trim();
+    const amountWordsIndex = lines.findIndex(line => /Amount\s+Chargeable/i.test(line));
+    const invoiceAmountBlock = amountWordsIndex > 0 ? lines.slice(Math.max(0, amountWordsIndex - 4), amountWordsIndex).join(' ') : '';
+    const ewayInvoiceAmount = flat.match(/Total\s+Inv\s+Amt\s*:\s*([\d,]+\.\d{2})/i)?.[1] || '';
+    const invoiceAmounts = invoiceAmountBlock.match(/\d[\d,]*\.\d{2}/g) || [];
+    const invoiceValue = ewayInvoiceAmount ? Number(ewayInvoiceAmount.replace(/,/g, '')) : invoiceAmounts.length ? Math.max(...invoiceAmounts.map(value => Number(value.replace(/,/g, '')))) : null;
+    const ewayBill = flat.match(/(?:e-?Way\s+Bill(?:\s+No\.?)?)[^0-9]{0,30}(\d{12})/i)?.[1] || '';
+    const vehicleNumber = flat.match(/\b([A-Z]{2}\s?\d{1,2}\s?[A-Z]{1,3}\s?\d{4})\b/i)?.[1]?.replace(/\s+/g, '').toUpperCase() || '';
+    return { invoiceNumber, invoiceDate: tallyDateToIso(invoiceDate), poNumber, destination, invoiceValue, ewayBill, vehicleNumber };
+  }
+  function invoiceStatus(row, state, message) {
+    row.dataset.invoiceState = state;
+    row.classList.toggle('invoice-mismatch', state === 'mismatch');
+    row.classList.toggle('invoice-matched', state === 'matched');
+    const status = row.querySelector('.invoice-read-status');
+    status.dataset.state = state; status.textContent = message;
+  }
+  async function handleInvoiceFile(input) {
+    const row = input.closest('tr'), file = input.files?.[0], record = records.find(item => item.id === row?.dataset.poId);
+    if (!row || !record || !file) { if (row) invoiceStatus(row, 'idle', 'Select a Tally PDF to auto-fill.'); return; }
+    if (file.type !== 'application/pdf' && !file.name.toLowerCase().endsWith('.pdf')) {
+      invoiceStatus(row, 'warning', 'Image attached — enter the invoice number and date manually.'); return;
+    }
+    invoiceStatus(row, 'reading', 'Reading invoice…');
+    try {
+      const parsed = parseTallyInvoice(await readPdfLines(file));
+      if (parsed.invoiceNumber) row.querySelector('.po-invoice-number').value = parsed.invoiceNumber;
+      if (parsed.invoiceDate) row.querySelector('.po-invoice-date').value = parsed.invoiceDate;
+      if (parsed.vehicleNumber && !$('tripVehicle').value) $('tripVehicle').value = parsed.vehicleNumber;
+      const expectedPo = normalizePoNumber(record.po_number), invoicePo = normalizePoNumber(parsed.poNumber);
+      const details = [parsed.invoiceNumber, record.delivery_location || parsed.destination, parsed.invoiceValue != null ? money(parsed.invoiceValue) : '', parsed.ewayBill ? `e-Way ${parsed.ewayBill}` : ''].filter(Boolean).join(' · ');
+      if (invoicePo && expectedPo && invoicePo !== expectedPo) {
+        invoiceStatus(row, 'mismatch', `Wrong invoice: it belongs to PO ${parsed.poNumber}, not ${record.po_number}.`); return;
+      }
+      if (invoicePo && expectedPo === invoicePo && parsed.invoiceNumber && parsed.invoiceDate) {
+        invoiceStatus(row, 'matched', `✓ PO ${record.po_number} matched${details ? ` · ${details}` : ''}`); return;
+      }
+      const missing = [!parsed.poNumber && 'PO number', !parsed.invoiceNumber && 'invoice number', !parsed.invoiceDate && 'invoice date'].filter(Boolean).join(', ');
+      invoiceStatus(row, 'warning', `Please verify manually — could not read ${missing || 'all invoice details'}.`);
+    } catch (error) { invoiceStatus(row, 'warning', error.message || 'Could not read this PDF. Enter details manually.'); }
   }
 
   async function loadData() {
@@ -149,7 +239,7 @@
       <td><span class="po-main">${safe(record.po_number)}</span><span class="po-secondary">${safe(record.delivery_location || 'Location pending')}</span></td>
       <td><input class="po-invoice-number" required placeholder="Invoice number" /></td>
       <td><input class="po-invoice-date" type="date" required /></td>
-      <td><input class="po-invoice-file" type="file" accept="application/pdf,image/*" required /></td>
+      <td><input class="po-invoice-file" type="file" accept="application/pdf,image/*" required /><small class="invoice-read-status" data-state="idle">Select a Tally PDF to auto-fill.</small></td>
       <td><input class="po-allocated-cost" type="number" min="0" step="0.01" value="0" required /></td>
     </tr>`).join('');
     $('openTripDialogBtn').disabled = chosen.length === 0;
@@ -192,8 +282,10 @@
       const freight = Number($('tripFreight').value || 0), tripId = crypto.randomUUID();
       const details = chosen.map(record => {
         const row = $('tripPoDetails').querySelector(`tr[data-po-id="${record.id}"]`);
-        return { record, invoiceNumber: row.querySelector('.po-invoice-number').value.trim(), invoiceDate: row.querySelector('.po-invoice-date').value, invoiceFile: row.querySelector('.po-invoice-file').files[0], allocatedCost: Number(row.querySelector('.po-allocated-cost').value || 0) };
+        return { record, invoiceState: row.dataset.invoiceState || 'idle', invoiceNumber: row.querySelector('.po-invoice-number').value.trim(), invoiceDate: row.querySelector('.po-invoice-date').value, invoiceFile: row.querySelector('.po-invoice-file').files[0], allocatedCost: Number(row.querySelector('.po-allocated-cost').value || 0) };
       });
+      for (const detail of details) if (detail.invoiceState === 'reading') throw new Error(`Wait for invoice reading to finish for PO ${detail.record.po_number}.`);
+      for (const detail of details) if (detail.invoiceState === 'mismatch') throw new Error(`The uploaded invoice does not match PO ${detail.record.po_number}. Replace it before creating the trip.`);
       for (const detail of details) if (!detail.invoiceNumber || !detail.invoiceDate || !detail.invoiceFile) throw new Error(`Complete invoice details for PO ${detail.record.po_number}.`);
       await Promise.all(details.map(async detail => { detail.invoicePath = await uploadTripInvoice(tripId, detail.record.id, detail.invoiceFile); }));
       const payload = { id: tripId, trip_date: $('tripDate').value, status: 'Planning', transporter: $('tripTransporter').value.trim(), vehicle_number: $('tripVehicle').value.trim() || null, driver_name: $('tripDriver').value.trim() || null, driver_phone: $('tripDriverPhone').value.trim() || null, quoted_cost: freight, actual_freight: freight, loading_cost: Number($('tripLoadingCost').value || 0), parking_toll: Number($('tripTollCost').value || 0), other_cost: Number($('tripOtherCost').value || 0) };
@@ -214,6 +306,7 @@
     $('closeTripDialogBtn').addEventListener('click', () => $('tripPlanDialog').close()); $('cancelTripBtn').addEventListener('click', () => $('tripPlanDialog').close());
     ['tripFreight', 'tripLoadingCost', 'tripTollCost', 'tripOtherCost'].forEach(id => $(id).addEventListener('input', updateCostSummary));
     $('tripPoDetails').addEventListener('input', event => { if (event.target.matches('.po-allocated-cost')) updateCostSummary(); });
+    $('tripPoDetails').addEventListener('change', event => { if (event.target.matches('.po-invoice-file')) handleInvoiceFile(event.target); });
     ['searchInput', 'statusFilter', 'dateFrom', 'dateTo'].forEach(id => { $(id).addEventListener('input', render); $(id).addEventListener('change', render); });
     $('dateRangeFilter').addEventListener('change', () => { toggleCustomDates(); render(); });
     $('poTableBody').addEventListener('change', event => { if (!event.target.matches('.po-choice')) return; if (event.target.checked) selectedPoIds.add(event.target.value); else selectedPoIds.delete(event.target.value); render(); });

@@ -7,7 +7,7 @@
     <title>KSDL Executive PO View</title>
     <link rel="stylesheet" href="styles.css" />
     <link rel="stylesheet" href="mobile-filters.css" />
-    <link rel="stylesheet" href="logistics.css?v=step4-20260722" />
+    <link rel="stylesheet" href="logistics.css?v=invoice-reader-20260722" />
     <style>
       .trip-plan-dialog{width:min(1120px,calc(100% - 24px))}
       .po-detail-heading{margin-top:20px;padding-top:17px;border-top:1px solid var(--line)}
@@ -105,7 +105,7 @@
             <label>Toll / parking (₹)<input id="tripTollCost" type="number" min="0" step="0.01" value="0" /></label>
             <label>Other cost (₹)<input id="tripOtherCost" type="number" min="0" step="0.01" value="0" /></label>
           </div>
-          <div class="po-detail-heading"><div><h3>Invoice and delivery cost for each PO</h3><p>Upload each invoice separately and enter the cost allocated to that delivery.</p></div></div>
+          <div class="po-detail-heading"><div><h3>Invoice and delivery cost for each PO</h3><p>Upload each Tally invoice PDF. The invoice number and date will be filled automatically and checked against the selected PO.</p></div></div>
           <div class="po-detail-wrap"><table class="po-detail-table"><thead><tr><th>PO / location</th><th>Invoice number*</th><th>Invoice date*</th><th>Invoice copy*</th><th>Allocated cost (₹)*</th></tr></thead><tbody id="tripPoDetails"></tbody></table></div>
           <div class="cost-check"><span>Total trip cost <strong id="totalTripCost">₹0</strong></span><span>Allocated to POs <strong id="allocatedPoCost">₹0</strong></span><span id="allocationDifference">Difference ₹0</span></div>
           <p id="tripPlanError" class="error" aria-live="polite"></p>
@@ -123,6 +123,7 @@
 
     <div id="toast" class="toast" role="status"></div>
     <script src="config.js"></script>
-    <script src="logistics.js?v=step4-20260722"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script src="logistics.js?v=invoice-reader-20260722"></script>
   </body>
 </html>
