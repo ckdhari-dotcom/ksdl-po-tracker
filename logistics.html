@@ -7,7 +7,7 @@
     <title>KSDL Executive PO View</title>
     <link rel="stylesheet" href="styles.css" />
     <link rel="stylesheet" href="mobile-filters.css" />
-    <link rel="stylesheet" href="logistics.css?v=invoice-reader-20260722" />
+    <link rel="stylesheet" href="logistics.css?v=edit-trip-20260722" />
     <style>
       .trip-plan-dialog{width:min(1120px,calc(100% - 24px))}
       .po-detail-heading{margin-top:20px;padding-top:17px;border-top:1px solid var(--line)}
@@ -93,21 +93,17 @@
 
       <dialog id="tripPlanDialog" class="trip-plan-dialog">
         <form id="tripPlanForm">
-          <div class="trip-dialog-head"><div><span class="eyebrow">PLAN FOR DELIVERY</span><h2>Create new trip</h2><p id="selectedPoSummary">Selected POs will appear here.</p></div><button id="closeTripDialogBtn" class="icon-btn" type="button" aria-label="Close">×</button></div>
+          <div class="trip-dialog-head"><div><span id="tripDialogEyebrow" class="eyebrow">PLAN FOR DELIVERY</span><h2 id="tripDialogTitle">Create new trip</h2><p id="selectedPoSummary">Selected POs will appear here.</p></div><button id="closeTripDialogBtn" class="icon-btn" type="button" aria-label="Close">×</button></div>
           <div class="plan-grid">
             <label>Trip date*<input id="tripDate" type="date" required /></label>
             <label>Transporter / tempo owner*<input id="tripTransporter" required placeholder="e.g. Mahesh Tempo" /></label>
             <label>Vehicle number<input id="tripVehicle" placeholder="GJ-01-AB-1234" /></label>
             <label>Driver name<input id="tripDriver" /></label>
             <label>Driver phone<input id="tripDriverPhone" inputmode="tel" /></label>
-            <label>Vehicle / tempo cost (₹)*<input id="tripFreight" type="number" min="0" step="0.01" value="0" required /></label>
-            <label>Loading / unloading (₹)<input id="tripLoadingCost" type="number" min="0" step="0.01" value="0" /></label>
-            <label>Toll / parking (₹)<input id="tripTollCost" type="number" min="0" step="0.01" value="0" /></label>
-            <label>Other cost (₹)<input id="tripOtherCost" type="number" min="0" step="0.01" value="0" /></label>
+            <label>Vehicle / tempo cost (₹)<input id="tripFreight" type="number" min="0" step="0.01" placeholder="Optional" /></label>
           </div>
           <div class="po-detail-heading"><div><h3>Invoice and delivery cost for each PO</h3><p>Upload each Tally invoice PDF. The invoice number and date will be filled automatically and checked against the selected PO.</p></div></div>
-          <div class="po-detail-wrap"><table class="po-detail-table"><thead><tr><th>PO / location</th><th>Invoice number*</th><th>Invoice date*</th><th>Invoice copy*</th><th>Allocated cost (₹)*</th></tr></thead><tbody id="tripPoDetails"></tbody></table></div>
-          <div class="cost-check"><span>Total trip cost <strong id="totalTripCost">₹0</strong></span><span>Allocated to POs <strong id="allocatedPoCost">₹0</strong></span><span id="allocationDifference">Difference ₹0</span></div>
+          <div class="po-detail-wrap"><table class="po-detail-table"><thead><tr><th>PO / location</th><th>Invoice number*</th><th>Invoice date*</th><th>Invoice copy</th><th>Allocated cost (₹)</th></tr></thead><tbody id="tripPoDetails"></tbody></table></div>
           <p id="tripPlanError" class="error" aria-live="polite"></p>
           <div class="plan-actions"><button id="cancelTripBtn" type="button">Cancel</button><button id="createTripBtn" class="primary" disabled>Create trip with 0 POs</button></div>
         </form>
@@ -115,7 +111,7 @@
 
       <section class="table-card in-trip-card">
         <div class="table-title"><div><span class="eyebrow">STEP 4</span><h2>POs in trip</h2><p id="tripCount">0 active trips</p></div></div>
-        <div class="table-wrap"><table class="trip-table"><thead><tr><th>Trip date</th><th>POs / locations</th><th>Tempo / driver</th><th>Invoice</th><th>Status</th><th>Freight</th></tr></thead><tbody id="inTripBody"></tbody></table></div>
+        <div class="table-wrap"><table class="trip-table"><thead><tr><th>Trip date</th><th>POs / locations</th><th>Tempo / driver</th><th>Invoice</th><th>Status</th><th>Tempo cost</th><th>Action</th></tr></thead><tbody id="inTripBody"></tbody></table></div>
         <div id="tripEmptyState" class="empty-state"><h3>No POs are in a trip</h3><p>Tick POs above and create the first delivery plan.</p></div>
       </section>
       <p class="footnote">This executive page shows only Received, Scheduled, In Transit and Partially Delivered POs.</p>
@@ -124,6 +120,6 @@
     <div id="toast" class="toast" role="status"></div>
     <script src="config.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-    <script src="logistics.js?v=invoice-reader-20260722"></script>
+    <script src="logistics.js?v=edit-trip-20260722"></script>
   </body>
 </html>

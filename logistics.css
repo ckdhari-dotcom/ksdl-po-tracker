@@ -7,3 +7,4 @@
 .invoice-read-status[data-state="mismatch"]{color:#b42318;font-weight:800}
 .po-detail-table tr.invoice-mismatch{background:#fff3f2}
 .po-detail-table tr.invoice-matched{background:#f3fbf7}
+.edit-trip-btn{min-width:64px;white-space:nowrap}
