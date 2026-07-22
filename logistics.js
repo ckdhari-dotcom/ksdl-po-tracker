@@ -37,7 +37,14 @@
   function show(id) { $(id).classList.remove('hidden'); }
   function hide(id) { $(id).classList.add('hidden'); }
   function setMessage(message = '', error = false) { const el = $('syncMessage'); el.textContent = message; el.style.color = error ? '#b42318' : ''; }
-  function setOwnerVisibility() { document.querySelectorAll('.owner-only').forEach(el => el.classList.toggle('hidden', !isOwner())); $('manualPoBtn').classList.toggle('hidden', isOwner()); }
+  function setOwnerVisibility() {
+    document.querySelectorAll('.owner-only').forEach(el => el.classList.toggle('hidden', !isOwner()));
+    $('manualPoBtn').classList.toggle('hidden', isOwner());
+    $('newTripBtn').classList.toggle('hidden', !isOwner());
+    $('executivePoToolbar').classList.toggle('hidden', isOwner());
+    $('tripSummary').classList.toggle('hidden', !isOwner());
+    $('tripToolbar').classList.toggle('hidden', !isOwner());
+  }
 
   async function signIn(email, password) {
     const data = await api('/auth/v1/token?grant_type=password', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, password }) });
@@ -115,11 +122,17 @@
     panel.classList.toggle('hidden', !showForExecutive);
     if (!showForExecutive) return;
     const busyIds = new Set(trips.filter(trip => !['Delivered', 'Cancelled'].includes(trip.status)).flatMap(trip => (trip.delivery_trip_pos || []).map(link => link.purchase_order_id)));
-    const ready = purchaseOrders.filter(po => {
+    const openPoSearch = $('openPoSearch').value.trim().toLowerCase();
+    const allReady = purchaseOrders.filter(po => {
       const returnedToMe = po.review_status === 'Needs Correction' && po.created_by === session?.user?.id;
-      return returnedToMe || (!['Delivered', 'Cancelled'].includes(po.status) && !busyIds.has(po.id));
+      const openForMe = returnedToMe || (!['Delivered', 'Cancelled'].includes(po.status) && !busyIds.has(po.id));
+      return openForMe;
     });
-    selectedOpenPoIds = new Set([...selectedOpenPoIds].filter(id => ready.some(po => po.id === id && po.status === 'Received')));
+    const ready = allReady.filter(po => {
+      const searchable = [po.po_number, po.customer_name, po.delivery_location, po.invoice_number, po.transporter, po.remarks, po.status].join(' ').toLowerCase();
+      return !openPoSearch || searchable.includes(openPoSearch);
+    });
+    selectedOpenPoIds = new Set([...selectedOpenPoIds].filter(id => allReady.some(po => po.id === id && po.status === 'Received')));
     $('readyPoBody').innerHTML = ready.map(po => {
       const canDispatch = po.status === 'Received' && !busyIds.has(po.id);
       const returned = po.review_status === 'Needs Correction' && po.created_by === session?.user?.id;
@@ -316,7 +329,7 @@
     $('loginForm').addEventListener('submit', async event => { event.preventDefault(); $('loginError').textContent = ''; try { await signIn($('emailInput').value.trim(), $('passwordInput').value); await start(); } catch (err) { $('loginError').textContent = err.message || 'Sign in failed.'; } });
     $('signOutBtn').addEventListener('click', signOut); $('newTripBtn').addEventListener('click', () => openTripForm()); $('emptyNewBtn').addEventListener('click', () => openTripForm()); $('manualPoBtn').addEventListener('click', () => openManualPoForm());
     $('createSelectedTripBtn').addEventListener('click', () => { if (selectedOpenPoIds.size) openTripForm(null, [...selectedOpenPoIds]); });
-    $('refreshBtn').addEventListener('click', () => loadData().catch(err => setMessage(err.message, true))); $('searchInput').addEventListener('input', render); $('statusFilter').addEventListener('change', render);
+    $('refreshBtn').addEventListener('click', () => loadData().catch(err => setMessage(err.message, true))); $('executiveRefreshBtn').addEventListener('click', () => loadData().catch(err => setMessage(err.message, true))); $('openPoSearch').addEventListener('input', renderReadyPos); $('searchInput').addEventListener('input', render); $('statusFilter').addEventListener('change', render);
     $('tripForm').addEventListener('submit', saveTrip); $('manualPoForm').addEventListener('submit', saveManualPo); $('poSearch').addEventListener('input', () => renderChecklist(getSelectedIds())); $('allocationMethod').addEventListener('change', updateAllocationPreview);
     ['actualFreight', 'loadingCost', 'parkingToll', 'otherCost'].forEach(id => $(id).addEventListener('input', refreshTotal));
     document.addEventListener('click', event => { const closer = event.target.closest('[data-close]'); if (closer) $(closer.dataset.close).close(); if (event.target.closest('[data-hide-trip]')) hide('tripComposer'); const view = event.target.closest('.view-trip'); if (view) openTripView(view.dataset.id); const correction = event.target.closest('.correct-manual-po'); if (correction) openManualPoForm(purchaseOrders.find(po => po.id === correction.dataset.id)); });
