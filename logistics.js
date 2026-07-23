@@ -196,7 +196,7 @@
     $('connectionStatus').textContent = 'Loading POs…';
     const [poResult, tripResult, transporterResult] = await Promise.allSettled([
       api('/rest/v1/purchase_orders?select=*&order=po_received_date.desc'),
-      api('/rest/v1/delivery_trips?select=*,delivery_trip_pos(purchase_order_id,allocated_cost,invoice_number,invoice_date,invoice_attachment_url,delivery_status,correction_reason,purchase_orders(id,po_number,customer_name,delivery_location,status))&order=trip_date.desc,created_at.desc'),
+      api('/rest/v1/delivery_trips?select=*,delivery_trip_pos(purchase_order_id,allocated_cost,invoice_number,invoice_date,invoice_attachment_url,delivery_status,correction_reason,purchase_orders(id,po_number,customer_name,delivery_location,status,po_attachment_url))&order=trip_date.desc,created_at.desc'),
       api('/rest/v1/transporters?select=id,name,phone,active&active=eq.true&order=name.asc')
     ]);
     if (poResult.status === 'rejected') {
@@ -210,6 +210,12 @@
     await Promise.all(records.map(async record => {
       if (record.po_attachment_url) record.po_attachment_link = await signedFileUrl(record.po_attachment_url).catch(() => '');
     }));
+    await Promise.all(trips.flatMap(trip => (trip.delivery_trip_pos || []).map(async link => {
+      const poCopy = link.purchase_orders?.po_attachment_url;
+      const invoiceCopy = link.invoice_attachment_url || trip.invoice_attachment_url;
+      if (poCopy) link.po_attachment_link = await signedFileUrl(poCopy).catch(() => '');
+      if (invoiceCopy) link.invoice_attachment_link = await signedFileUrl(invoiceCopy).catch(() => '');
+    })));
     const availableIds = new Set(availableRecords().map(record => record.id));
     selectedPoIds = new Set([...selectedPoIds].filter(id => availableIds.has(id)));
     $('connectionStatus').textContent = tripStorageReady && transporterResult.status === 'fulfilled' ? 'Cloud synced' : 'POs loaded; payment setup required';
@@ -309,8 +315,18 @@
     $('inTripBody').innerHTML = trips.map(trip => {
       const links = trip.delivery_trip_pos || [];
       const correctionLinks = links.filter(link => link.delivery_status === 'Needs Correction'), needsCorrection = correctionLinks.length > 0;
-      const chips = links.map(link => `<span class="trip-po-chip ${link.delivery_status === 'Needs Correction' ? 'needs-correction' : ''}">${safe(link.purchase_orders?.po_number || 'PO')} · ${safe(link.purchase_orders?.delivery_location || 'Location pending')}${link.delivery_status === 'Needs Correction' ? `<small>${safe(link.correction_reason || 'Correction requested')}</small>` : ''}</span>`).join('');
-      const invoices = links.map(link => `<div><strong>${safe(link.purchase_orders?.po_number || 'PO')}:</strong> ${safe(link.invoice_number || '—')} · ${money(link.allocated_cost)}</div>`).join('');
+      const chips = links.map(link => {
+        const poCopy = link.po_attachment_link
+          ? `<a class="trip-doc-link po-copy-link" href="${safe(link.po_attachment_link)}" target="_blank" rel="noopener">View PO copy</a>`
+          : '<span class="trip-doc-missing">PO copy unavailable</span>';
+        return `<div class="trip-po-card"><span class="trip-po-chip ${link.delivery_status === 'Needs Correction' ? 'needs-correction' : ''}">${safe(link.purchase_orders?.po_number || 'PO')} · ${safe(link.purchase_orders?.delivery_location || 'Location pending')}${link.delivery_status === 'Needs Correction' ? `<small>${safe(link.correction_reason || 'Correction requested')}</small>` : ''}</span>${poCopy}</div>`;
+      }).join('');
+      const invoices = links.map(link => {
+        const invoiceCopy = link.invoice_attachment_link
+          ? `<a class="trip-doc-link invoice-copy-link" href="${safe(link.invoice_attachment_link)}" target="_blank" rel="noopener">View invoice copy</a>`
+          : '<span class="trip-doc-missing">Invoice copy unavailable</span>';
+        return `<div class="trip-invoice-row"><div><strong>${safe(link.purchase_orders?.po_number || 'PO')}:</strong> ${safe(link.invoice_number || trip.invoice_number || '—')} · ${money(link.allocated_cost)}</div>${invoiceCopy}</div>`;
+      }).join('');
       const tempoCost = Number(trip.actual_freight || 0);
       return `<tr class="${needsCorrection ? 'correction-trip' : ''}"><td>${localDate(trip.trip_date)}</td><td><div class="trip-po-list">${chips || 'No POs linked'}</div></td><td>${safe(trip.vehicle_number || trip.transporter || '—')}<span class="po-secondary">${safe(trip.driver_name || '')}</span></td><td>${invoices || '—'}</td><td><span class="executive-status ${needsCorrection ? 'needs-correction' : ''}">${needsCorrection ? 'Needs Correction' : safe(trip.status)}</span></td><td>${tempoCost ? money(tempoCost) : '—'}</td><td><div class="trip-actions"><button class="text-btn edit-trip-btn" type="button" data-trip-id="${trip.id}">Edit</button><button class="complete-trip-btn" type="button" data-trip-id="${trip.id}">${needsCorrection ? 'Correct delivery' : 'Complete delivery'}</button></div></td></tr>`;
     }).join('');

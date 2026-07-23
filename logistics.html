@@ -4,10 +4,10 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#124e45" />
-    <title>KSDL Executive PO View</title>
+    <title>KSDL Dispatch & Invoice Review</title>
     <link rel="stylesheet" href="styles.css" />
     <link rel="stylesheet" href="mobile-filters.css" />
-    <link rel="stylesheet" href="logistics.css?v=delivery-correction-20260722" />
+    <link rel="stylesheet" href="logistics.css?v=accountant-review-20260723" />
     <style>
       .trip-plan-dialog{width:min(1120px,calc(100% - 24px))}
       .po-detail-heading{margin-top:20px;padding-top:17px;border-top:1px solid var(--line)}
@@ -25,8 +25,8 @@
     <section id="loginScreen" class="login-screen hidden">
       <form id="loginForm" class="login-card">
         <span class="eyebrow">KSDL DISTRIBUTION</span>
-        <h1>Executive PO View</h1>
-        <p>Sign in with your authorised business email.</p>
+        <h1>Dispatch & Invoice Review</h1>
+        <p>For the accountant and delivery executive. Sign in with your authorised business email.</p>
         <label>Email<input id="emailInput" type="email" autocomplete="username" required autofocus /></label>
         <label>Password<input id="passwordInput" type="password" autocomplete="current-password" required /></label>
         <p id="loginError" class="error" aria-live="polite"></p>
@@ -36,7 +36,7 @@
 
     <main id="app" class="app-shell hidden">
       <header class="topbar">
-        <div><span class="eyebrow">KSDL DISTRIBUTION</span><h1>Open Purchase Orders</h1></div>
+        <div><span class="eyebrow">KSDL DISTRIBUTION</span><h1>Dispatch & Invoice Review</h1></div>
         <div class="top-actions">
           <span id="connectionStatus" class="connection-status">Connecting…</span>
           <span id="signedInAs" class="connection-status"></span>
@@ -121,16 +121,16 @@
       </dialog>
 
       <section class="table-card in-trip-card">
-        <div class="table-title"><div><span class="eyebrow">STEP 4</span><h2>POs in trip</h2><p id="tripCount">0 active trips</p></div></div>
-        <div class="table-wrap"><table class="trip-table"><thead><tr><th>Trip date</th><th>POs / locations</th><th>Tempo / driver</th><th>Invoice</th><th>Status</th><th>Tempo cost</th><th>Action</th></tr></thead><tbody id="inTripBody"></tbody></table></div>
+        <div class="table-title"><div><span class="eyebrow">STEP 4</span><h2>POs in trip</h2><p id="tripCount">0 active trips</p><p class="review-hint">Open the PO and invoice copies here to verify that the correct documents are attached.</p></div></div>
+        <div class="table-wrap"><table class="trip-table"><thead><tr><th>Trip date</th><th>PO / location / PO copy</th><th>Tempo / driver</th><th>Invoice / invoice copy</th><th>Status</th><th>Tempo cost</th><th>Action</th></tr></thead><tbody id="inTripBody"></tbody></table></div>
         <div id="tripEmptyState" class="empty-state"><h3>No POs are in a trip</h3><p>Tick POs above and create the first delivery plan.</p></div>
       </section>
-      <p class="footnote">This executive page shows open POs and any delivered PO returned by the owner for correction.</p>
+      <p class="footnote">This shared page lets the accountant verify documents and the delivery executive plan and complete trips.</p>
     </main>
 
     <div id="toast" class="toast" role="status"></div>
     <script src="config.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-    <script src="logistics.js?v=delivery-correction-20260722"></script>
+    <script src="logistics.js?v=accountant-review-20260723"></script>
   </body>
 </html>

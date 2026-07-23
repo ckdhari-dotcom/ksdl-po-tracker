@@ -24,3 +24,13 @@
 .complete-po-table input{width:100%;min-width:150px}
 .complete-total{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:12px;padding:12px 14px;border-radius:9px;background:#eaf6f0;color:var(--green)}
 .complete-total span{font-size:.82rem;font-weight:750}.complete-total strong{font-size:1.15rem}
+.review-hint{margin-top:5px!important;color:var(--muted);font-size:.8rem}
+.trip-po-list{display:grid;gap:8px}
+.trip-po-card,.trip-invoice-row{display:grid;gap:5px;align-content:start;padding:8px;border:1px solid var(--line);border-radius:8px;background:#fff}
+.trip-po-chip{width:fit-content}
+.trip-invoice-row+.trip-invoice-row{margin-top:8px}
+.trip-doc-link{display:inline-flex;align-items:center;width:fit-content;padding:4px 8px;border-radius:6px;background:#eaf4f0;color:var(--green);font-size:.73rem;font-weight:800;text-decoration:none}
+.trip-doc-link:hover{background:#dceee7;text-decoration:underline}
+.invoice-copy-link{background:#eaf1ff;color:#245ba7}
+.invoice-copy-link:hover{background:#dce8ff}
+.trip-doc-missing{color:var(--muted);font-size:.72rem;font-style:italic}
