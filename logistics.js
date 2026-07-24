@@ -11,7 +11,7 @@
   const CLOSED_TRIP_STATUSES = ['Delivered', 'Cancelled'];
   const TRANSLATIONS = {
     en: {
-      brand: 'KSDL DISTRIBUTION', pageTitle: 'Dispatch & Invoice Review', loginSubtitle: 'For the accountant and delivery executive. Sign in with your authorised business email.',
+      brand: 'KSDL DISTRIBUTION', pageTitle: 'Dispatch & Invoice Review', loginSubtitle: 'For the accountant and sales representative. Sign in with your authorised business email.',
       language: 'Language', email: 'Email', password: 'Password', signIn: 'Sign in', refresh: 'Refresh', signOut: 'Sign out',
       totalOpenPos: 'Total open POs', value: '{amount} value', received: 'Received', waitingPlanning: 'Waiting for planning', scheduled: 'Scheduled', plannedDispatch: 'Planned for dispatch',
       inTransit: 'In transit', materialOnRoad: 'Material on the road', partiallyDelivered: 'Partially delivered', balancePending: 'Balance still pending',
@@ -27,7 +27,7 @@
       finalTotalCost: 'Final total transport cost', completionNote: 'The total is calculated automatically from all PO costs. Each PO will receive its own delivery slip, final cost, invoice details and invoice copy in the owner tracker.',
       step4: 'STEP 4', posInTrip: 'POs in trip', reviewHint: 'Open the PO and invoice copies here to verify that the correct documents are attached.', tripDatePlain: 'Trip date',
       poLocationCopy: 'PO / location / PO copy', tempoDriver: 'Tempo / driver', invoiceAndCopy: 'Invoice / invoice copy', tempoCost: 'Tempo cost', action: 'Action',
-      noPosInTrip: 'No POs are in a trip', noPosInTripHelp: 'Tick POs above and create the first delivery plan.', footerNote: 'This shared page lets the accountant verify documents and the delivery executive plan and complete trips.',
+      noPosInTrip: 'No POs are in a trip', noPosInTripHelp: 'Tick POs above and create the first delivery plan.', footerNote: 'This shared page lets the accountant verify documents and the sales representative plan and complete trips.',
       connecting: 'Connecting…', loadingPos: 'Loading POs…', couldNotLoad: 'Could not load POs', cloudSynced: 'Cloud synced', setupRequired: 'POs loaded; payment setup required',
       openPoCount: '{count} open PO(s)', activeTripCount: '{count} active trip(s)', createNewTripCount: 'Create new trip ({count})', createTripCount: 'Create trip with {count} PO(s)',
       updateDeliveryPlan: 'UPDATE DELIVERY PLAN', planDelivery: 'PLAN FOR DELIVERY', editTrip: 'Edit trip', createNewTrip: 'Create new trip',
@@ -51,7 +51,7 @@
       invoiceMatched: '✓ PO {po} matched', verifyInvoice: 'Please verify the invoice details manually.', savingChanges: 'Saving changes…', creatingTrip: 'Creating trip…'
     },
     gu: {
-      brand: 'KSDL ડિસ્ટ્રિબ્યુશન', pageTitle: 'ડિસ્પેચ અને ઇન્વૉઇસ ચકાસણી', loginSubtitle: 'એકાઉન્ટન્ટ અને ડિલિવરી એક્ઝિક્યુટિવ માટે. તમારા અધિકૃત બિઝનેસ ઈમેલથી સાઇન ઇન કરો.',
+      brand: 'KSDL ડિસ્ટ્રિબ્યુશન', pageTitle: 'ડિસ્પેચ અને ઇન્વૉઇસ ચકાસણી', loginSubtitle: 'એકાઉન્ટન્ટ અને સેલ્સ પ્રતિનિધિ માટે. તમારા અધિકૃત બિઝનેસ ઈમેલથી સાઇન ઇન કરો.',
       language: 'ભાષા', email: 'ઈમેલ', password: 'પાસવર્ડ', signIn: 'સાઇન ઇન', refresh: 'રિફ્રેશ', signOut: 'સાઇન આઉટ',
       totalOpenPos: 'કુલ ઓપન PO', value: '{amount} મૂલ્ય', received: 'મળેલ', waitingPlanning: 'પ્લાનિંગ બાકી', scheduled: 'નિયોજિત', plannedDispatch: 'ડિસ્પેચ માટે આયોજન થયેલ',
       inTransit: 'માર્ગમાં', materialOnRoad: 'માલ રસ્તામાં છે', partiallyDelivered: 'આંશિક ડિલિવરી', balancePending: 'બાકી માલ આપવાનો છે',
@@ -67,7 +67,7 @@
       finalTotalCost: 'કુલ અંતિમ ટ્રાન્સપોર્ટ ખર્ચ', completionNote: 'બધા POના ખર્ચ પરથી કુલ આપમેળે ગણાશે. દરેક POની ડિલિવરી સ્લિપ, અંતિમ ખર્ચ, ઇન્વૉઇસ વિગતો અને નકલ ઓનર ટ્રેકરમાં જશે.',
       step4: 'પગલું 4', posInTrip: 'ટ્રિપમાં PO', reviewHint: 'સાચા દસ્તાવેજ જોડાયેલા છે કે નહીં તે તપાસવા PO અને ઇન્વૉઇસની નકલ અહીં ખોલો.', tripDatePlain: 'ટ્રિપ તારીખ',
       poLocationCopy: 'PO / સ્થળ / PO નકલ', tempoDriver: 'ટેમ્પો / ડ્રાઇવર', invoiceAndCopy: 'ઇન્વૉઇસ / ઇન્વૉઇસ નકલ', tempoCost: 'ટેમ્પો ખર્ચ', action: 'કાર્યवाही',
-      noPosInTrip: 'કોઈ PO ટ્રિપમાં નથી', noPosInTripHelp: 'ઉપર PO પસંદ કરીને પ્રથમ ડિલિવરી પ્લાન બનાવો.', footerNote: 'આ પેજ પર એકાઉન્ટન્ટ દસ્તાવેજ તપાસી શકે છે અને ડિલિવરી એક્ઝિક્યુટિવ ટ્રિપ બનાવી અને પૂર્ણ કરી શકે છે.',
+      noPosInTrip: 'કોઈ PO ટ્રિપમાં નથી', noPosInTripHelp: 'ઉપર PO પસંદ કરીને પ્રથમ ડિલિવરી પ્લાન બનાવો.', footerNote: 'આ પેજ પર એકાઉન્ટન્ટ દસ્તાવેજ તપાસી શકે છે અને સેલ્સ પ્રતિનિધિ ટ્રિપ બનાવી અને પૂર્ણ કરી શકે છે.',
       connecting: 'કનેક્ટ થઈ રહ્યું છે…', loadingPos: 'PO લોડ થઈ રહ્યા છે…', couldNotLoad: 'PO લોડ થઈ શક્યા નથી', cloudSynced: 'ક્લાઉડ સિંક થયેલ', setupRequired: 'PO લોડ થયા; પેમેન્ટ સેટઅપ જરૂરી',
       openPoCount: '{count} ઓપન PO', activeTripCount: '{count} સક્રિય ટ્રિપ', createNewTripCount: 'નવી ટ્રિપ બનાવો ({count})', createTripCount: '{count} PO સાથે ટ્રિપ બનાવો',
       updateDeliveryPlan: 'ડિલિવરી પ્લાન સુધારો', planDelivery: 'ડિલિવરીનું આયોજન', editTrip: 'ટ્રિપ સુધારો', createNewTrip: 'નવી ટ્રિપ બનાવો',
@@ -91,7 +91,7 @@
       invoiceMatched: '✓ PO {po} મેળ ખાય છે', verifyInvoice: 'ઇન્વૉઇસ વિગતો જાતે ચકાસો.', savingChanges: 'ફેરફાર સાચવી રહ્યા છે…', creatingTrip: 'ટ્રિપ બની રહી છે…'
     },
     hi: {
-      brand: 'KSDL डिस्ट्रीब्यूशन', pageTitle: 'डिस्पैच और इनवॉइस जाँच', loginSubtitle: 'अकाउंटेंट और डिलीवरी एग्जीक्यूटिव के लिए। अपने अधिकृत बिज़नेस ईमेल से साइन इन करें।',
+      brand: 'KSDL डिस्ट्रीब्यूशन', pageTitle: 'डिस्पैच और इनवॉइस जाँच', loginSubtitle: 'अकाउंटेंट और सेल्स प्रतिनिधि के लिए। अपने अधिकृत बिज़नेस ईमेल से साइन इन करें।',
       language: 'भाषा', email: 'ईमेल', password: 'पासवर्ड', signIn: 'साइन इन', refresh: 'रिफ्रेश', signOut: 'साइन आउट',
       totalOpenPos: 'कुल खुले PO', value: '{amount} मूल्य', received: 'प्राप्त', waitingPlanning: 'प्लानिंग बाकी', scheduled: 'निर्धारित', plannedDispatch: 'डिस्पैच की योजना बनी',
       inTransit: 'रास्ते में', materialOnRoad: 'सामान रास्ते में है', partiallyDelivered: 'आंशिक डिलीवरी', balancePending: 'बाकी माल देना है',
@@ -107,7 +107,7 @@
       finalTotalCost: 'कुल अंतिम ट्रांसपोर्ट खर्च', completionNote: 'सभी PO के खर्च से कुल अपने आप निकलेगा। हर PO की डिलीवरी स्लिप, अंतिम खर्च, इनवॉइस विवरण और कॉपी मालिक के ट्रैकर में जाएगी।',
       step4: 'चरण 4', posInTrip: 'ट्रिप में PO', reviewHint: 'सही दस्तावेज़ लगे हैं या नहीं, यह जाँचने के लिए PO और इनवॉइस कॉपी यहाँ खोलें।', tripDatePlain: 'ट्रिप तारीख',
       poLocationCopy: 'PO / स्थान / PO कॉपी', tempoDriver: 'टेम्पो / ड्राइवर', invoiceAndCopy: 'इनवॉइस / इनवॉइस कॉपी', tempoCost: 'टेम्पो खर्च', action: 'कार्रवाई',
-      noPosInTrip: 'कोई PO ट्रिप में नहीं है', noPosInTripHelp: 'ऊपर PO चुनकर पहला डिलीवरी प्लान बनाएँ।', footerNote: 'इस पेज पर अकाउंटेंट दस्तावेज़ जाँच सकता है और डिलीवरी एग्जीक्यूटिव ट्रिप बना और पूरी कर सकता है।',
+      noPosInTrip: 'कोई PO ट्रिप में नहीं है', noPosInTripHelp: 'ऊपर PO चुनकर पहला डिलीवरी प्लान बनाएँ।', footerNote: 'इस पेज पर अकाउंटेंट दस्तावेज़ जाँच सकता है और सेल्स प्रतिनिधि ट्रिप बना और पूरी कर सकता है।',
       connecting: 'कनेक्ट हो रहा है…', loadingPos: 'PO लोड हो रहे हैं…', couldNotLoad: 'PO लोड नहीं हो सके', cloudSynced: 'क्लाउड सिंक हुआ', setupRequired: 'PO लोड हुए; भुगतान सेटअप जरूरी',
       openPoCount: '{count} खुले PO', activeTripCount: '{count} सक्रिय ट्रिप', createNewTripCount: 'नई ट्रिप बनाएँ ({count})', createTripCount: '{count} PO की ट्रिप बनाएँ',
       updateDeliveryPlan: 'डिलीवरी प्लान अपडेट करें', planDelivery: 'डिलीवरी की योजना', editTrip: 'ट्रिप संपादित करें', createNewTrip: 'नई ट्रिप बनाएँ',
