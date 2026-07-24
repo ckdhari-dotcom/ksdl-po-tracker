@@ -5,10 +5,140 @@
   const BASE_URL = String(CONFIG.SUPABASE_URL || '').replace(/\/$/, '');
   const PUBLIC_KEY = CONFIG.SUPABASE_ANON_KEY || '';
   const SESSION_KEY = 'ksdl-po-tracker-session';
+  const LANGUAGE_KEY = 'ksdl-logistics-language';
   const NOTE_BUCKET = 'delivery-notes';
   const OPEN_STATUSES = ['Received', 'Scheduled', 'In Transit', 'Partially Delivered'];
   const CLOSED_TRIP_STATUSES = ['Delivered', 'Cancelled'];
-  const INR = new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 });
+  const TRANSLATIONS = {
+    en: {
+      brand: 'KSDL DISTRIBUTION', pageTitle: 'Dispatch & Invoice Review', loginSubtitle: 'For the accountant and delivery executive. Sign in with your authorised business email.',
+      language: 'Language', email: 'Email', password: 'Password', signIn: 'Sign in', refresh: 'Refresh', signOut: 'Sign out',
+      totalOpenPos: 'Total open POs', value: '{amount} value', received: 'Received', waitingPlanning: 'Waiting for planning', scheduled: 'Scheduled', plannedDispatch: 'Planned for dispatch',
+      inTransit: 'In transit', materialOnRoad: 'Material on the road', partiallyDelivered: 'Partially delivered', balancePending: 'Balance still pending',
+      searchPlaceholder: 'Search PO, customer, location, invoice or transporter', allOpenStatuses: 'All open statuses', allDates: 'All dates', currentMonth: 'Current month',
+      lastMonth: 'Last month', customDates: 'Custom dates', from: 'From', to: 'To', clearFilters: 'Clear filters', openPurchaseOrders: 'Open purchase orders',
+      poCustomer: 'PO / Customer', poDate: 'PO Date', status: 'Status', deliveryLocation: 'Delivery location', poValue: 'PO Value', deliveryDate: 'Delivery date',
+      invoice: 'Invoice', transport: 'Transport', assigned: 'Assigned', age: 'Age', noOpenPos: 'No open POs found', noOpenPosHelp: 'There are no POs matching the current search and filters.',
+      tripDate: 'Trip date*', transporterOwner: 'Transporter / tempo owner*', selectTransporter: 'Select transporter', vehicleNumber: 'Vehicle number', driverName: 'Driver name',
+      driverPhone: 'Driver phone', vehicleCost: 'Vehicle / tempo cost (₹)', optional: 'Optional', invoiceCostHeading: 'Invoice and delivery cost for each PO',
+      invoiceCostHelp: 'Upload each Tally invoice PDF. The invoice number and date will be filled automatically and checked against the selected PO.',
+      poLocation: 'PO / location', invoiceNumber: 'Invoice number*', invoiceDate: 'Invoice date*', invoiceCopy: 'Invoice copy', allocatedCost: 'Allocated cost (₹)', cancel: 'Cancel',
+      deliveryCompleted: 'DELIVERY COMPLETED', completeDelivery: 'Complete delivery', finalTransportCost: 'Final transport cost (₹)', signedDeliverySlip: 'Signed delivery slip*',
+      finalTotalCost: 'Final total transport cost', completionNote: 'The total is calculated automatically from all PO costs. Each PO will receive its own delivery slip, final cost, invoice details and invoice copy in the owner tracker.',
+      step4: 'STEP 4', posInTrip: 'POs in trip', reviewHint: 'Open the PO and invoice copies here to verify that the correct documents are attached.', tripDatePlain: 'Trip date',
+      poLocationCopy: 'PO / location / PO copy', tempoDriver: 'Tempo / driver', invoiceAndCopy: 'Invoice / invoice copy', tempoCost: 'Tempo cost', action: 'Action',
+      noPosInTrip: 'No POs are in a trip', noPosInTripHelp: 'Tick POs above and create the first delivery plan.', footerNote: 'This shared page lets the accountant verify documents and the delivery executive plan and complete trips.',
+      connecting: 'Connecting…', loadingPos: 'Loading POs…', couldNotLoad: 'Could not load POs', cloudSynced: 'Cloud synced', setupRequired: 'POs loaded; payment setup required',
+      openPoCount: '{count} open PO(s)', activeTripCount: '{count} active trip(s)', createNewTripCount: 'Create new trip ({count})', createTripCount: 'Create trip with {count} PO(s)',
+      updateDeliveryPlan: 'UPDATE DELIVERY PLAN', planDelivery: 'PLAN FOR DELIVERY', editTrip: 'Edit trip', createNewTrip: 'Create new trip',
+      selectedPos: '{count} PO(s): {pos}', selectPosHelp: 'Tick POs above to plan one delivery trip.', locationPending: 'Location pending', receivedOn: 'Received {date}', days: '{count} days',
+      viewPoCopy: 'View PO copy', viewInvoiceCopy: 'View invoice copy', poCopyUnavailable: 'PO copy unavailable', invoiceCopyUnavailable: 'Invoice copy unavailable',
+      invoiceAttached: 'Invoice already attached. Upload a file only to replace it.', selectTally: 'Select a Tally PDF to auto-fill.', ownerCorrection: 'Owner correction: {reason}',
+      correctionRequested: 'Correction requested', pleaseReview: 'Please review this delivery.', noPosLinked: 'No POs linked', needsCorrection: 'Needs Correction',
+      edit: 'Edit', correctDelivery: 'Correct delivery', saveTripChanges: 'Save trip changes', completeEachDelivery: '{count} PO(s) in this trip — complete each delivery separately.',
+      returnedByOwner: '{count} PO(s) returned by the owner — upload the corrected delivery slip and final cost.', tripNotFound: 'Trip not found. Refresh and try again.',
+      uploadSlipForPo: 'Upload the signed delivery slip for PO {po}.', completingDelivery: 'Completing delivery…', tripChangesSaved: 'Trip changes saved.',
+      tripCreated: 'Trip created — selected POs moved to POs in trip.', correctedResubmitted: 'Corrected delivery resubmitted to the owner.',
+      deliveryUpdated: 'Delivery completed — linked POs updated in the owner tracker.', readingInvoice: 'Reading invoice…',
+      selectAtLeastOne: 'Select at least one PO first.', waitForInvoice: 'Wait for invoice reading to finish for PO {po}.', replaceWrongInvoice: 'The uploaded invoice does not match PO {po}. Replace it before saving.',
+      uploadVerifyInvoice: 'Upload and verify the invoice for PO {po}.', selectTransporterError: 'Select a transporter from the Transporter Master.', editInvoiceFirst: 'Edit the trip and complete the invoice details for PO {po}.',
+      planning: 'Planning', pending: 'Pending', delivered: 'Delivered', cancelled: 'Cancelled',
+      invoiceCopyRequired: 'Attach the invoice copy before creating the trip.', invoiceTooLarge: 'Invoice copy must be 10 MB or smaller.', slipRequired: 'Upload the signed delivery slip before completing the trip.',
+      slipTooLarge: 'Delivery slip must be 10 MB or smaller.', pdfReaderError: 'The PDF reader did not load. Check the internet connection and try again.', tripSetupNotReady: 'Trip setup is not ready. Please contact the administrator.',
+      couldNotSaveTrip: 'Could not save the trip.', couldNotComplete: 'Could not complete the delivery.', signInFailed: 'Sign in failed.', notConfigured: 'The app is not configured.', signInAgain: 'Please sign in again.',
+      invoiceNumberPlaceholder: 'Invoice number',
+      imageInvoiceManual: 'Image attached — enter the invoice number and date manually.', wrongInvoice: 'Wrong invoice: it belongs to PO {actual}, not {expected}.',
+      invoiceMatched: '✓ PO {po} matched', verifyInvoice: 'Please verify the invoice details manually.', savingChanges: 'Saving changes…', creatingTrip: 'Creating trip…'
+    },
+    gu: {
+      brand: 'KSDL ડિસ્ટ્રિબ્યુશન', pageTitle: 'ડિસ્પેચ અને ઇન્વૉઇસ ચકાસણી', loginSubtitle: 'એકાઉન્ટન્ટ અને ડિલિવરી એક્ઝિક્યુટિવ માટે. તમારા અધિકૃત બિઝનેસ ઈમેલથી સાઇન ઇન કરો.',
+      language: 'ભાષા', email: 'ઈમેલ', password: 'પાસવર્ડ', signIn: 'સાઇન ઇન', refresh: 'રિફ્રેશ', signOut: 'સાઇન આઉટ',
+      totalOpenPos: 'કુલ ઓપન PO', value: '{amount} મૂલ્ય', received: 'મળેલ', waitingPlanning: 'પ્લાનિંગ બાકી', scheduled: 'નિયોજિત', plannedDispatch: 'ડિસ્પેચ માટે આયોજન થયેલ',
+      inTransit: 'માર્ગમાં', materialOnRoad: 'માલ રસ્તામાં છે', partiallyDelivered: 'આંશિક ડિલિવરી', balancePending: 'બાકી માલ આપવાનો છે',
+      searchPlaceholder: 'PO, ગ્રાહક, સ્થળ, ઇન્વૉઇસ અથવા ટ્રાન્સપોર્ટર શોધો', allOpenStatuses: 'બધા ઓપન સ્ટેટસ', allDates: 'બધી તારીખો', currentMonth: 'ચાલુ મહિનો',
+      lastMonth: 'ગયા મહિનો', customDates: 'પસંદગીની તારીખો', from: 'થી', to: 'સુધી', clearFilters: 'ફિલ્ટર સાફ કરો', openPurchaseOrders: 'ઓપન પરચેઝ ઓર્ડર',
+      poCustomer: 'PO / ગ્રાહક', poDate: 'PO તારીખ', status: 'સ્થિતિ', deliveryLocation: 'ડિલિવરી સ્થળ', poValue: 'PO મૂલ્ય', deliveryDate: 'ડિલિવરી તારીખ',
+      invoice: 'ઇન્વૉઇસ', transport: 'ટ્રાન્સપોર્ટ', assigned: 'જવાબદારી', age: 'ઉંમર', noOpenPos: 'કોઈ ઓપન PO મળ્યો નથી', noOpenPosHelp: 'હાલની શોધ અને ફિલ્ટર મુજબ કોઈ PO નથી.',
+      tripDate: 'ટ્રિપ તારીખ*', transporterOwner: 'ટ્રાન્સપોર્ટર / ટેમ્પો માલિક*', selectTransporter: 'ટ્રાન્સપોર્ટર પસંદ કરો', vehicleNumber: 'વાહન નંબર', driverName: 'ડ્રાઇવરનું નામ',
+      driverPhone: 'ડ્રાઇવર ફોન', vehicleCost: 'વાહન / ટેમ્પો ખર્ચ (₹)', optional: 'વૈકલ્પિક', invoiceCostHeading: 'દરેક PO માટે ઇન્વૉઇસ અને ડિલિવરી ખર્ચ',
+      invoiceCostHelp: 'દરેક Tally ઇન્વૉઇસ PDF અપલોડ કરો. ઇન્વૉઇસ નંબર અને તારીખ આપમેળે ભરાશે અને પસંદ કરેલા PO સાથે ચકાસાશે.',
+      poLocation: 'PO / સ્થળ', invoiceNumber: 'ઇન્વૉઇસ નંબર*', invoiceDate: 'ઇન્વૉઇસ તારીખ*', invoiceCopy: 'ઇન્વૉઇસ નકલ', allocatedCost: 'ફાળવેલ ખર્ચ (₹)', cancel: 'રદ કરો',
+      deliveryCompleted: 'ડિલિવરી પૂર્ણ', completeDelivery: 'ડિલિવરી પૂર્ણ કરો', finalTransportCost: 'અંતિમ ટ્રાન્સપોર્ટ ખર્ચ (₹)', signedDeliverySlip: 'સહીવાળી ડિલિવરી સ્લિપ*',
+      finalTotalCost: 'કુલ અંતિમ ટ્રાન્સપોર્ટ ખર્ચ', completionNote: 'બધા POના ખર્ચ પરથી કુલ આપમેળે ગણાશે. દરેક POની ડિલિવરી સ્લિપ, અંતિમ ખર્ચ, ઇન્વૉઇસ વિગતો અને નકલ ઓનર ટ્રેકરમાં જશે.',
+      step4: 'પગલું 4', posInTrip: 'ટ્રિપમાં PO', reviewHint: 'સાચા દસ્તાવેજ જોડાયેલા છે કે નહીં તે તપાસવા PO અને ઇન્વૉઇસની નકલ અહીં ખોલો.', tripDatePlain: 'ટ્રિપ તારીખ',
+      poLocationCopy: 'PO / સ્થળ / PO નકલ', tempoDriver: 'ટેમ્પો / ડ્રાઇવર', invoiceAndCopy: 'ઇન્વૉઇસ / ઇન્વૉઇસ નકલ', tempoCost: 'ટેમ્પો ખર્ચ', action: 'કાર્યवाही',
+      noPosInTrip: 'કોઈ PO ટ્રિપમાં નથી', noPosInTripHelp: 'ઉપર PO પસંદ કરીને પ્રથમ ડિલિવરી પ્લાન બનાવો.', footerNote: 'આ પેજ પર એકાઉન્ટન્ટ દસ્તાવેજ તપાસી શકે છે અને ડિલિવરી એક્ઝિક્યુટિવ ટ્રિપ બનાવી અને પૂર્ણ કરી શકે છે.',
+      connecting: 'કનેક્ટ થઈ રહ્યું છે…', loadingPos: 'PO લોડ થઈ રહ્યા છે…', couldNotLoad: 'PO લોડ થઈ શક્યા નથી', cloudSynced: 'ક્લાઉડ સિંક થયેલ', setupRequired: 'PO લોડ થયા; પેમેન્ટ સેટઅપ જરૂરી',
+      openPoCount: '{count} ઓપન PO', activeTripCount: '{count} સક્રિય ટ્રિપ', createNewTripCount: 'નવી ટ્રિપ બનાવો ({count})', createTripCount: '{count} PO સાથે ટ્રિપ બનાવો',
+      updateDeliveryPlan: 'ડિલિવરી પ્લાન સુધારો', planDelivery: 'ડિલિવરીનું આયોજન', editTrip: 'ટ્રિપ સુધારો', createNewTrip: 'નવી ટ્રિપ બનાવો',
+      selectedPos: '{count} PO: {pos}', selectPosHelp: 'એક ડિલિવરી ટ્રિપ બનાવવા ઉપર PO પસંદ કરો.', locationPending: 'સ્થળ બાકી', receivedOn: '{date} એ મળેલ', days: '{count} દિવસ',
+      viewPoCopy: 'PO નકલ જુઓ', viewInvoiceCopy: 'ઇન્વૉઇસ નકલ જુઓ', poCopyUnavailable: 'PO નકલ ઉપલબ્ધ નથી', invoiceCopyUnavailable: 'ઇન્વૉઇસ નકલ ઉપલબ્ધ નથી',
+      invoiceAttached: 'ઇન્વૉઇસ પહેલેથી જોડાયેલ છે. બદલવા માટે જ નવી ફાઇલ અપલોડ કરો.', selectTally: 'આપમેળે ભરવા Tally PDF પસંદ કરો.', ownerCorrection: 'ઓનર સુધારો: {reason}',
+      correctionRequested: 'સુધારો માંગેલ', pleaseReview: 'આ ડિલિવરી ફરી તપાસો.', noPosLinked: 'કોઈ PO જોડાયેલ નથી', needsCorrection: 'સુધારો જરૂરી',
+      edit: 'સુધારો', correctDelivery: 'ડિલિવરી સુધારો', saveTripChanges: 'ટ્રિપ ફેરફાર સાચવો', completeEachDelivery: 'આ ટ્રિપના {count} PO — દરેક ડિલિવરી અલગથી પૂર્ણ કરો.',
+      returnedByOwner: 'ઓનરે {count} PO પાછા મોકલ્યા — સુધારેલી ડિલિવરી સ્લિપ અને અંતિમ ખર્ચ અપલોડ કરો.', tripNotFound: 'ટ્રિપ મળી નથી. રિફ્રેશ કરીને ફરી પ્રયાસ કરો.',
+      uploadSlipForPo: 'PO {po} માટે સહીવાળી ડિલિવરી સ્લિપ અપલોડ કરો.', completingDelivery: 'ડિલિવરી પૂર્ણ થઈ રહી છે…', tripChangesSaved: 'ટ્રિપ ફેરફાર સાચવ્યા.',
+      tripCreated: 'ટ્રિપ બની — પસંદ કરેલા PO ટ્રિપ વિભાગમાં ખસેડાયા.', correctedResubmitted: 'સુધારેલી ડિલિવરી ઓનરને ફરી મોકલાઈ.',
+      deliveryUpdated: 'ડિલિવરી પૂર્ણ — જોડાયેલા PO ઓનર ટ્રેકરમાં અપડેટ થયા.', readingInvoice: 'ઇન્વૉઇસ વાંચી રહ્યું છે…',
+      selectAtLeastOne: 'પહેલા ઓછામાં ઓછો એક PO પસંદ કરો.', waitForInvoice: 'PO {po}નું ઇન્વૉઇસ વાંચવાનું પૂરું થાય ત્યાં સુધી રાહ જુઓ.', replaceWrongInvoice: 'અપલોડ કરેલું ઇન્વૉઇસ PO {po} સાથે મળતું નથી. સાચું ઇન્વૉઇસ અપલોડ કરો.',
+      uploadVerifyInvoice: 'PO {po}નું ઇન્વૉઇસ અપલોડ કરીને ચકાસો.', selectTransporterError: 'ટ્રાન્સપોર્ટર માસ્ટરમાંથી ટ્રાન્સપોર્ટર પસંદ કરો.', editInvoiceFirst: 'ટ્રિપ સુધારી PO {po}ની ઇન્વૉઇસ વિગતો પૂર્ણ કરો.',
+      planning: 'આયોજન', pending: 'બાકી', delivered: 'ડિલિવર થયેલ', cancelled: 'રદ થયેલ',
+      invoiceCopyRequired: 'ટ્રિપ બનાવતા પહેલા ઇન્વૉઇસ નકલ જોડો.', invoiceTooLarge: 'ઇન્વૉઇસ નકલ 10 MB અથવા તેનાથી નાની હોવી જોઈએ.', slipRequired: 'ટ્રિપ પૂર્ણ કરતા પહેલા સહીવાળી ડિલિવરી સ્લિપ અપલોડ કરો.',
+      slipTooLarge: 'ડિલિવરી સ્લિપ 10 MB અથવા તેનાથી નાની હોવી જોઈએ.', pdfReaderError: 'PDF રીડર લોડ થયો નથી. ઇન્ટરનેટ તપાસી ફરી પ્રયાસ કરો.', tripSetupNotReady: 'ટ્રિપ સેટઅપ તૈયાર નથી. એડમિનિસ્ટ્રેટરનો સંપર્ક કરો.',
+      couldNotSaveTrip: 'ટ્રિપ સાચવી શકાઈ નથી.', couldNotComplete: 'ડિલિવરી પૂર્ણ થઈ શકી નથી.', signInFailed: 'સાઇન ઇન થઈ શક્યું નથી.', notConfigured: 'એપનું સેટઅપ પૂર્ણ નથી.', signInAgain: 'ફરી સાઇન ઇન કરો.',
+      invoiceNumberPlaceholder: 'ઇન્વૉઇસ નંબર',
+      imageInvoiceManual: 'ઇમેજ જોડાઈ — ઇન્વૉઇસ નંબર અને તારીખ જાતે દાખલ કરો.', wrongInvoice: 'ખોટું ઇન્વૉઇસ: આ PO {actual}નું છે, {expected}નું નથી.',
+      invoiceMatched: '✓ PO {po} મેળ ખાય છે', verifyInvoice: 'ઇન્વૉઇસ વિગતો જાતે ચકાસો.', savingChanges: 'ફેરફાર સાચવી રહ્યા છે…', creatingTrip: 'ટ્રિપ બની રહી છે…'
+    },
+    hi: {
+      brand: 'KSDL डिस्ट्रीब्यूशन', pageTitle: 'डिस्पैच और इनवॉइस जाँच', loginSubtitle: 'अकाउंटेंट और डिलीवरी एग्जीक्यूटिव के लिए। अपने अधिकृत बिज़नेस ईमेल से साइन इन करें।',
+      language: 'भाषा', email: 'ईमेल', password: 'पासवर्ड', signIn: 'साइन इन', refresh: 'रिफ्रेश', signOut: 'साइन आउट',
+      totalOpenPos: 'कुल खुले PO', value: '{amount} मूल्य', received: 'प्राप्त', waitingPlanning: 'प्लानिंग बाकी', scheduled: 'निर्धारित', plannedDispatch: 'डिस्पैच की योजना बनी',
+      inTransit: 'रास्ते में', materialOnRoad: 'सामान रास्ते में है', partiallyDelivered: 'आंशिक डिलीवरी', balancePending: 'बाकी माल देना है',
+      searchPlaceholder: 'PO, ग्राहक, स्थान, इनवॉइस या ट्रांसपोर्टर खोजें', allOpenStatuses: 'सभी खुले स्टेटस', allDates: 'सभी तारीखें', currentMonth: 'चालू महीना',
+      lastMonth: 'पिछला महीना', customDates: 'अपनी तारीखें', from: 'से', to: 'तक', clearFilters: 'फिल्टर हटाएँ', openPurchaseOrders: 'खुले परचेज़ ऑर्डर',
+      poCustomer: 'PO / ग्राहक', poDate: 'PO तारीख', status: 'स्थिति', deliveryLocation: 'डिलीवरी स्थान', poValue: 'PO मूल्य', deliveryDate: 'डिलीवरी तारीख',
+      invoice: 'इनवॉइस', transport: 'ट्रांसपोर्ट', assigned: 'जिम्मेदारी', age: 'आयु', noOpenPos: 'कोई खुला PO नहीं मिला', noOpenPosHelp: 'मौजूदा खोज और फिल्टर से मेल खाने वाला कोई PO नहीं है।',
+      tripDate: 'ट्रिप तारीख*', transporterOwner: 'ट्रांसपोर्टर / टेम्पो मालिक*', selectTransporter: 'ट्रांसपोर्टर चुनें', vehicleNumber: 'वाहन नंबर', driverName: 'ड्राइवर का नाम',
+      driverPhone: 'ड्राइवर फोन', vehicleCost: 'वाहन / टेम्पो खर्च (₹)', optional: 'वैकल्पिक', invoiceCostHeading: 'हर PO का इनवॉइस और डिलीवरी खर्च',
+      invoiceCostHelp: 'हर Tally इनवॉइस PDF अपलोड करें। इनवॉइस नंबर और तारीख अपने आप भरेंगे और चुने गए PO से जाँच होगी।',
+      poLocation: 'PO / स्थान', invoiceNumber: 'इनवॉइस नंबर*', invoiceDate: 'इनवॉइस तारीख*', invoiceCopy: 'इनवॉइस कॉपी', allocatedCost: 'आवंटित खर्च (₹)', cancel: 'रद्द करें',
+      deliveryCompleted: 'डिलीवरी पूरी', completeDelivery: 'डिलीवरी पूरी करें', finalTransportCost: 'अंतिम ट्रांसपोर्ट खर्च (₹)', signedDeliverySlip: 'हस्ताक्षरित डिलीवरी स्लिप*',
+      finalTotalCost: 'कुल अंतिम ट्रांसपोर्ट खर्च', completionNote: 'सभी PO के खर्च से कुल अपने आप निकलेगा। हर PO की डिलीवरी स्लिप, अंतिम खर्च, इनवॉइस विवरण और कॉपी मालिक के ट्रैकर में जाएगी।',
+      step4: 'चरण 4', posInTrip: 'ट्रिप में PO', reviewHint: 'सही दस्तावेज़ लगे हैं या नहीं, यह जाँचने के लिए PO और इनवॉइस कॉपी यहाँ खोलें।', tripDatePlain: 'ट्रिप तारीख',
+      poLocationCopy: 'PO / स्थान / PO कॉपी', tempoDriver: 'टेम्पो / ड्राइवर', invoiceAndCopy: 'इनवॉइस / इनवॉइस कॉपी', tempoCost: 'टेम्पो खर्च', action: 'कार्रवाई',
+      noPosInTrip: 'कोई PO ट्रिप में नहीं है', noPosInTripHelp: 'ऊपर PO चुनकर पहला डिलीवरी प्लान बनाएँ।', footerNote: 'इस पेज पर अकाउंटेंट दस्तावेज़ जाँच सकता है और डिलीवरी एग्जीक्यूटिव ट्रिप बना और पूरी कर सकता है।',
+      connecting: 'कनेक्ट हो रहा है…', loadingPos: 'PO लोड हो रहे हैं…', couldNotLoad: 'PO लोड नहीं हो सके', cloudSynced: 'क्लाउड सिंक हुआ', setupRequired: 'PO लोड हुए; भुगतान सेटअप जरूरी',
+      openPoCount: '{count} खुले PO', activeTripCount: '{count} सक्रिय ट्रिप', createNewTripCount: 'नई ट्रिप बनाएँ ({count})', createTripCount: '{count} PO की ट्रिप बनाएँ',
+      updateDeliveryPlan: 'डिलीवरी प्लान अपडेट करें', planDelivery: 'डिलीवरी की योजना', editTrip: 'ट्रिप संपादित करें', createNewTrip: 'नई ट्रिप बनाएँ',
+      selectedPos: '{count} PO: {pos}', selectPosHelp: 'एक डिलीवरी ट्रिप बनाने के लिए ऊपर PO चुनें।', locationPending: 'स्थान बाकी', receivedOn: '{date} को प्राप्त', days: '{count} दिन',
+      viewPoCopy: 'PO कॉपी देखें', viewInvoiceCopy: 'इनवॉइस कॉपी देखें', poCopyUnavailable: 'PO कॉपी उपलब्ध नहीं', invoiceCopyUnavailable: 'इनवॉइस कॉपी उपलब्ध नहीं',
+      invoiceAttached: 'इनवॉइस पहले से जुड़ा है। बदलने के लिए ही नई फाइल अपलोड करें।', selectTally: 'अपने आप भरने के लिए Tally PDF चुनें।', ownerCorrection: 'मालिक का सुधार: {reason}',
+      correctionRequested: 'सुधार माँगा गया', pleaseReview: 'इस डिलीवरी को फिर जाँचें।', noPosLinked: 'कोई PO जुड़ा नहीं', needsCorrection: 'सुधार जरूरी',
+      edit: 'संपादित करें', correctDelivery: 'डिलीवरी सुधारें', saveTripChanges: 'ट्रिप बदलाव सहेजें', completeEachDelivery: 'इस ट्रिप के {count} PO — हर डिलीवरी अलग से पूरी करें।',
+      returnedByOwner: 'मालिक ने {count} PO वापस भेजे — सही डिलीवरी स्लिप और अंतिम खर्च अपलोड करें।', tripNotFound: 'ट्रिप नहीं मिली। रिफ्रेश करके फिर प्रयास करें।',
+      uploadSlipForPo: 'PO {po} की हस्ताक्षरित डिलीवरी स्लिप अपलोड करें।', completingDelivery: 'डिलीवरी पूरी हो रही है…', tripChangesSaved: 'ट्रिप बदलाव सहेजे गए।',
+      tripCreated: 'ट्रिप बनी — चुने गए PO ट्रिप सेक्शन में चले गए।', correctedResubmitted: 'सुधारी गई डिलीवरी मालिक को फिर भेजी गई।',
+      deliveryUpdated: 'डिलीवरी पूरी — जुड़े PO मालिक के ट्रैकर में अपडेट हुए।', readingInvoice: 'इनवॉइस पढ़ा जा रहा है…',
+      selectAtLeastOne: 'पहले कम से कम एक PO चुनें।', waitForInvoice: 'PO {po} का इनवॉइस पढ़ना पूरा होने तक रुकें।', replaceWrongInvoice: 'अपलोड किया गया इनवॉइस PO {po} से मेल नहीं खाता। सही इनवॉइस लगाएँ।',
+      uploadVerifyInvoice: 'PO {po} का इनवॉइस अपलोड करके जाँचें।', selectTransporterError: 'ट्रांसपोर्टर मास्टर से ट्रांसपोर्टर चुनें।', editInvoiceFirst: 'ट्रिप संपादित करके PO {po} का इनवॉइस विवरण पूरा करें।',
+      planning: 'योजना', pending: 'बाकी', delivered: 'डिलीवर हुआ', cancelled: 'रद्द',
+      invoiceCopyRequired: 'ट्रिप बनाने से पहले इनवॉइस कॉपी लगाएँ।', invoiceTooLarge: 'इनवॉइस कॉपी 10 MB या उससे छोटी होनी चाहिए।', slipRequired: 'ट्रिप पूरी करने से पहले हस्ताक्षरित डिलीवरी स्लिप अपलोड करें।',
+      slipTooLarge: 'डिलीवरी स्लिप 10 MB या उससे छोटी होनी चाहिए।', pdfReaderError: 'PDF रीडर लोड नहीं हुआ। इंटरनेट जाँचकर फिर प्रयास करें।', tripSetupNotReady: 'ट्रिप सेटअप तैयार नहीं है। एडमिनिस्ट्रेटर से संपर्क करें।',
+      couldNotSaveTrip: 'ट्रिप सहेजी नहीं जा सकी।', couldNotComplete: 'डिलीवरी पूरी नहीं हो सकी।', signInFailed: 'साइन इन नहीं हुआ।', notConfigured: 'ऐप का सेटअप पूरा नहीं है।', signInAgain: 'फिर से साइन इन करें।',
+      invoiceNumberPlaceholder: 'इनवॉइस नंबर',
+      imageInvoiceManual: 'इमेज जुड़ी — इनवॉइस नंबर और तारीख खुद भरें।', wrongInvoice: 'गलत इनवॉइस: यह PO {actual} का है, {expected} का नहीं।',
+      invoiceMatched: '✓ PO {po} मेल खाता है', verifyInvoice: 'इनवॉइस विवरण स्वयं जाँचें।', savingChanges: 'बदलाव सहेजे जा रहे हैं…', creatingTrip: 'ट्रिप बन रही है…'
+    }
+  };
+  const LOCALES = { en: 'en-IN', gu: 'gu-IN', hi: 'hi-IN' };
+  let currentLanguage = localStorage.getItem(LANGUAGE_KEY) || 'en';
+  if (!TRANSLATIONS[currentLanguage]) currentLanguage = 'en';
+  const t = (key, values = {}) => {
+    let text = TRANSLATIONS[currentLanguage]?.[key] || TRANSLATIONS.en[key] || key;
+    Object.entries(values).forEach(([name, value]) => { text = text.replaceAll(`{${name}}`, value); });
+    return text;
+  };
 
   if (window.pdfjsLib) {
     window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
@@ -24,17 +154,32 @@
   let completingTripId = null;
   let tripStorageReady = true;
   let refreshTimer = null;
+  let connectionMessageKey = 'connecting';
 
   const $ = id => document.getElementById(id);
-  const money = value => INR.format(Number(value || 0));
+  const money = value => new Intl.NumberFormat(LOCALES[currentLanguage], { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(Number(value || 0));
   const safe = value => String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]);
-  const localDate = value => value ? new Date(`${value}T00:00:00`).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '—';
+  const localDate = value => value ? new Date(`${value}T00:00:00`).toLocaleDateString(LOCALES[currentLanguage], { day: '2-digit', month: 'short', year: 'numeric' }) : '—';
   const isoDate = date => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
   const today = () => isoDate(new Date());
   const ageDays = record => record.po_received_date ? Math.max(0, Math.floor((new Date() - new Date(`${record.po_received_date}T00:00:00`)) / 86400000)) : null;
 
   function show(id) { $(id).classList.remove('hidden'); }
   function hide(id) { $(id).classList.add('hidden'); }
+  function applyLanguage(nextLanguage = currentLanguage) {
+    currentLanguage = TRANSLATIONS[nextLanguage] ? nextLanguage : 'en';
+    localStorage.setItem(LANGUAGE_KEY, currentLanguage);
+    document.documentElement.lang = currentLanguage;
+    document.title = `KSDL ${t('pageTitle')}`;
+    document.querySelectorAll('[data-i18n]').forEach(element => { element.textContent = t(element.dataset.i18n); });
+    document.querySelectorAll('[data-i18n-placeholder]').forEach(element => { element.placeholder = t(element.dataset.i18nPlaceholder); });
+    if ($('languageSelect')) $('languageSelect').value = currentLanguage;
+    if ($('loginLanguageSelect')) $('loginLanguageSelect').value = currentLanguage;
+    if ($('connectionStatus')) $('connectionStatus').textContent = t(connectionMessageKey);
+    renderTransporterOptions();
+    render();
+  }
+  function setConnectionStatus(key) { connectionMessageKey = key; $('connectionStatus').textContent = t(key); }
   function headers(extra = {}) { return { apikey: PUBLIC_KEY, Authorization: `Bearer ${session?.access_token || PUBLIC_KEY}`, ...extra }; }
   function saveSession(nextSession) { session = nextSession; sessionStorage.setItem(SESSION_KEY, JSON.stringify(session)); }
   function tokenExpiresSoon() {
@@ -90,16 +235,16 @@
     return data?.signedURL ? `${BASE_URL}/storage/v1${data.signedURL}` : '';
   }
   async function uploadTripInvoice(tripId, poId, file) {
-    if (!file) throw new Error('Attach the invoice copy before creating the trip.');
-    if (file.size > 10 * 1024 * 1024) throw new Error('Invoice copy must be 10 MB or smaller.');
+    if (!file) throw new Error(t('invoiceCopyRequired'));
+    if (file.size > 10 * 1024 * 1024) throw new Error(t('invoiceTooLarge'));
     const fileName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
     const path = `trip-invoices/${tripId}/${poId}/${Date.now()}-${fileName}`;
     await api(`/storage/v1/object/${NOTE_BUCKET}/${path}`, { method: 'POST', headers: { 'Content-Type': file.type || 'application/octet-stream', 'x-upsert': 'true' }, body: file });
     return path;
   }
   async function uploadTripDeliverySlip(tripId, poId, file) {
-    if (!file) throw new Error('Upload the signed delivery slip before completing the trip.');
-    if (file.size > 10 * 1024 * 1024) throw new Error('Delivery slip must be 10 MB or smaller.');
+    if (!file) throw new Error(t('slipRequired'));
+    if (file.size > 10 * 1024 * 1024) throw new Error(t('slipTooLarge'));
     const fileName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
     const path = `trip-delivery-slips/${tripId}/${poId}/${Date.now()}-${fileName}`;
     await api(`/storage/v1/object/${NOTE_BUCKET}/${path}`, { method: 'POST', headers: { 'Content-Type': file.type || 'application/octet-stream', 'x-upsert': 'true' }, body: file });
@@ -122,7 +267,7 @@
     return lines.slice(index, index + lookAhead).join(' ').match(valuePattern)?.[1] || '';
   }
   async function readPdfLines(file) {
-    if (!window.pdfjsLib) throw new Error('The PDF reader did not load. Check the internet connection and try again.');
+    if (!window.pdfjsLib) throw new Error(t('pdfReaderError'));
     const pdf = await window.pdfjsLib.getDocument({ data: await file.arrayBuffer() }).promise;
     const pages = [];
     for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber += 1) {
@@ -169,11 +314,11 @@
   }
   async function handleInvoiceFile(input) {
     const row = input.closest('tr'), file = input.files?.[0], record = records.find(item => item.id === row?.dataset.poId);
-    if (!row || !record || !file) { if (row) invoiceStatus(row, 'idle', 'Select a Tally PDF to auto-fill.'); return; }
+    if (!row || !record || !file) { if (row) invoiceStatus(row, 'idle', t('selectTally')); return; }
     if (file.type !== 'application/pdf' && !file.name.toLowerCase().endsWith('.pdf')) {
-      invoiceStatus(row, 'warning', 'Image attached — enter the invoice number and date manually.'); return;
+      invoiceStatus(row, 'warning', t('imageInvoiceManual')); return;
     }
-    invoiceStatus(row, 'reading', 'Reading invoice…');
+    invoiceStatus(row, 'reading', t('readingInvoice'));
     try {
       const parsed = parseTallyInvoice(await readPdfLines(file));
       if (parsed.invoiceNumber) row.querySelector('.po-invoice-number').value = parsed.invoiceNumber;
@@ -182,25 +327,24 @@
       const expectedPo = normalizePoNumber(record.po_number), invoicePo = normalizePoNumber(parsed.poNumber);
       const details = [parsed.invoiceNumber, record.delivery_location || parsed.destination, parsed.invoiceValue != null ? money(parsed.invoiceValue) : '', parsed.ewayBill ? `e-Way ${parsed.ewayBill}` : ''].filter(Boolean).join(' · ');
       if (invoicePo && expectedPo && invoicePo !== expectedPo) {
-        invoiceStatus(row, 'mismatch', `Wrong invoice: it belongs to PO ${parsed.poNumber}, not ${record.po_number}.`); return;
+        invoiceStatus(row, 'mismatch', t('wrongInvoice', { actual: parsed.poNumber, expected: record.po_number })); return;
       }
       if (invoicePo && expectedPo === invoicePo && parsed.invoiceNumber && parsed.invoiceDate) {
-        invoiceStatus(row, 'matched', `✓ PO ${record.po_number} matched${details ? ` · ${details}` : ''}`); return;
+        invoiceStatus(row, 'matched', `${t('invoiceMatched', { po: record.po_number })}${details ? ` · ${details}` : ''}`); return;
       }
-      const missing = [!parsed.poNumber && 'PO number', !parsed.invoiceNumber && 'invoice number', !parsed.invoiceDate && 'invoice date'].filter(Boolean).join(', ');
-      invoiceStatus(row, 'warning', `Please verify manually — could not read ${missing || 'all invoice details'}.`);
-    } catch (error) { invoiceStatus(row, 'warning', error.message || 'Could not read this PDF. Enter details manually.'); }
+      invoiceStatus(row, 'warning', t('verifyInvoice'));
+    } catch (error) { invoiceStatus(row, 'warning', error.message || t('verifyInvoice')); }
   }
 
   async function loadData() {
-    $('connectionStatus').textContent = 'Loading POs…';
+    setConnectionStatus('loadingPos');
     const [poResult, tripResult, transporterResult] = await Promise.allSettled([
       api('/rest/v1/purchase_orders?select=*&order=po_received_date.desc'),
       api('/rest/v1/delivery_trips?select=*,delivery_trip_pos(purchase_order_id,allocated_cost,invoice_number,invoice_date,invoice_attachment_url,delivery_status,correction_reason,purchase_orders(id,po_number,customer_name,delivery_location,status,po_attachment_url))&order=trip_date.desc,created_at.desc'),
       api('/rest/v1/transporters?select=id,name,phone,active&active=eq.true&order=name.asc')
     ]);
     if (poResult.status === 'rejected') {
-      records = []; trips = []; render(); $('connectionStatus').textContent = 'Could not load POs'; toast(poResult.reason?.message || 'Could not load POs'); return;
+      records = []; trips = []; render(); setConnectionStatus('couldNotLoad'); toast(poResult.reason?.message || t('couldNotLoad')); return;
     }
     records = (Array.isArray(poResult.value) ? poResult.value : []).filter(record => OPEN_STATUSES.includes(record.status));
     tripStorageReady = tripResult.status === 'fulfilled';
@@ -218,13 +362,13 @@
     })));
     const availableIds = new Set(availableRecords().map(record => record.id));
     selectedPoIds = new Set([...selectedPoIds].filter(id => availableIds.has(id)));
-    $('connectionStatus').textContent = tripStorageReady && transporterResult.status === 'fulfilled' ? 'Cloud synced' : 'POs loaded; payment setup required';
+    setConnectionStatus(tripStorageReady && transporterResult.status === 'fulfilled' ? 'cloudSynced' : 'setupRequired');
     render();
   }
 
   function renderTransporterOptions(selectedId = '') {
     const select = $('tripTransporter'), current = selectedId || select.value;
-    select.innerHTML = '<option value="">Select transporter</option>' + transporters.map(transporter => `<option value="${transporter.id}">${safe(transporter.name)}</option>`).join('');
+    select.innerHTML = `<option value="">${safe(t('selectTransporter'))}</option>` + transporters.map(transporter => `<option value="${transporter.id}">${safe(transporter.name)}</option>`).join('');
     select.value = current;
   }
 
@@ -255,26 +399,29 @@
     });
   }
   function statusClass(status) { return String(status || '').toLowerCase().replaceAll(' ', '-'); }
+  function statusLabel(status) {
+    return ({ Received: t('received'), Scheduled: t('scheduled'), 'In Transit': t('inTransit'), 'Partially Delivered': t('partiallyDelivered'), 'Needs Correction': t('needsCorrection'), Planning: t('planning'), Pending: t('pending'), Delivered: t('delivered'), Cancelled: t('cancelled') })[status] || status || '—';
+  }
 
   function renderOpenPos() {
     const showing = filteredRecords(); const totalValue = showing.reduce((sum, record) => sum + Number(record.po_value || 0), 0);
-    $('openCount').textContent = showing.length; $('openValue').textContent = `${money(totalValue)} value`;
+    $('openCount').textContent = showing.length; $('openValue').textContent = t('value', { amount: money(totalValue) });
     $('receivedCount').textContent = showing.filter(record => record.status === 'Received').length;
     $('scheduledCount').textContent = showing.filter(record => record.status === 'Scheduled').length;
     $('transitCount').textContent = showing.filter(record => record.status === 'In Transit').length;
     $('partialCount').textContent = showing.filter(record => record.status === 'Partially Delivered').length;
-    $('resultCount').textContent = `${showing.length} open PO${showing.length === 1 ? '' : 's'}`;
+    $('resultCount').textContent = t('openPoCount', { count: showing.length });
     $('poTableBody').innerHTML = showing.map(record => {
-      const age = ageDays(record), attachment = record.po_attachment_link ? `<a class="po-link" href="${safe(record.po_attachment_link)}" target="_blank" rel="noopener">View PO copy</a>` : '';
+      const age = ageDays(record), attachment = record.po_attachment_link ? `<a class="po-link" href="${safe(record.po_attachment_link)}" target="_blank" rel="noopener">${safe(t('viewPoCopy'))}</a>` : '';
       return `<tr class="${selectedPoIds.has(record.id) ? 'selected-row' : ''}">
         <td class="selection-cell"><input class="po-choice" type="checkbox" value="${record.id}" ${selectedPoIds.has(record.id) ? 'checked' : ''} aria-label="Select ${safe(record.po_number)}" /></td>
         <td><span class="po-main">${safe(record.po_number || '—')}</span><span class="po-secondary">${safe(record.customer_name || '—')}</span>${attachment}</td>
-        <td>${localDate(record.po_date)}<span class="po-secondary">Received ${localDate(record.po_received_date)}</span></td>
-        <td><span class="executive-status ${statusClass(record.status)}">${safe(record.status)}</span></td>
+        <td>${localDate(record.po_date)}<span class="po-secondary">${safe(t('receivedOn', { date: localDate(record.po_received_date) }))}</span></td>
+        <td><span class="executive-status ${statusClass(record.status)}">${safe(statusLabel(record.status))}</span></td>
         <td>${safe(record.delivery_location || '—')}</td><td>${money(record.po_value)}</td><td>${localDate(record.delivery_date)}</td>
         <td>${safe(record.invoice_number || '—')}<span class="po-secondary">${localDate(record.invoice_date)}</span></td>
         <td>${safe(record.transporter || '—')}<span class="po-secondary">${safe(record.tracking_number || '')}${record.transport_amount ? ` · ${money(record.transport_amount)}` : ''}</span></td>
-        <td>${safe(record.assigned_to || '—')}</td><td>${age == null ? '—' : `${age} days`}</td>
+        <td>${safe(record.assigned_to || '—')}</td><td>${age == null ? '—' : safe(t('days', { count: age }))}</td>
       </tr>`;
     }).join('');
     $('emptyState').classList.toggle('hidden', showing.length !== 0);
@@ -289,16 +436,16 @@
     const chosen = editTrip
       ? editLinks.map(link => records.find(record => record.id === link.purchase_order_id)).filter(Boolean)
       : records.filter(record => selectedPoIds.has(record.id));
-    $('tripDialogEyebrow').textContent = editTrip ? 'UPDATE DELIVERY PLAN' : 'PLAN FOR DELIVERY';
-    $('tripDialogTitle').textContent = editTrip ? 'Edit trip' : 'Create new trip';
-    $('selectedPoSummary').textContent = chosen.length ? `${chosen.length} PO${chosen.length === 1 ? '' : 's'}: ${chosen.map(record => record.po_number).join(', ')}` : 'Tick POs above to plan one delivery trip.';
+    $('tripDialogEyebrow').textContent = editTrip ? t('updateDeliveryPlan') : t('planDelivery');
+    $('tripDialogTitle').textContent = editTrip ? t('editTrip') : t('createNewTrip');
+    $('selectedPoSummary').textContent = chosen.length ? t('selectedPos', { count: chosen.length, pos: chosen.map(record => record.po_number).join(', ') }) : t('selectPosHelp');
     $('tripPoDetails').innerHTML = chosen.map(record => {
       const link = editLinksByPo.get(record.id); const hasInvoice = Boolean(link?.invoice_attachment_url);
-      const invoiceStatusText = hasInvoice ? 'Invoice already attached. Upload a file only to replace it.' : 'Select a Tally PDF to auto-fill.';
-      const correction = link?.delivery_status === 'Needs Correction' ? `<span class="correction-note">Owner correction: ${safe(link.correction_reason || 'Please review this delivery.')}</span>` : '';
+      const invoiceStatusText = hasInvoice ? t('invoiceAttached') : t('selectTally');
+      const correction = link?.delivery_status === 'Needs Correction' ? `<span class="correction-note">${safe(t('ownerCorrection', { reason: link.correction_reason || t('pleaseReview') }))}</span>` : '';
       return `<tr data-po-id="${record.id}" data-invoice-state="${hasInvoice ? 'existing' : 'idle'}" data-existing-invoice="${safe(link?.invoice_attachment_url || '')}">
-      <td><span class="po-main">${safe(record.po_number)}</span><span class="po-secondary">${safe(record.delivery_location || 'Location pending')}</span>${correction}</td>
-      <td><input class="po-invoice-number" required placeholder="Invoice number" value="${safe(link?.invoice_number || '')}" /></td>
+      <td><span class="po-main">${safe(record.po_number)}</span><span class="po-secondary">${safe(record.delivery_location || t('locationPending'))}</span>${correction}</td>
+      <td><input class="po-invoice-number" required placeholder="${safe(t('invoiceNumberPlaceholder'))}" value="${safe(link?.invoice_number || '')}" /></td>
       <td><input class="po-invoice-date" type="date" required value="${safe(link?.invoice_date || '')}" /></td>
       <td><input class="po-invoice-file" type="file" accept="application/pdf,image/*" ${hasInvoice ? '' : 'required'} /><small class="invoice-read-status" data-state="${hasInvoice ? 'matched' : 'idle'}">${invoiceStatusText}</small></td>
       <td><input class="po-allocated-cost" type="number" min="0" step="0.01" placeholder="Optional" value="${link?.allocated_cost ?? ''}" /></td>
@@ -306,29 +453,29 @@
     }).join('');
     const selectedCount = records.filter(record => selectedPoIds.has(record.id)).length;
     $('openTripDialogBtn').disabled = selectedCount === 0;
-    $('openTripDialogBtn').textContent = `Create new trip (${selectedCount})`;
+    $('openTripDialogBtn').textContent = t('createNewTripCount', { count: selectedCount });
     $('createTripBtn').disabled = chosen.length === 0;
-    $('createTripBtn').textContent = editTrip ? 'Save trip changes' : `Create trip with ${chosen.length} PO${chosen.length === 1 ? '' : 's'}`;
+    $('createTripBtn').textContent = editTrip ? t('saveTripChanges') : t('createTripCount', { count: chosen.length });
   }
   function renderTrips() {
-    $('tripCount').textContent = `${trips.length} active trip${trips.length === 1 ? '' : 's'}`;
+    $('tripCount').textContent = t('activeTripCount', { count: trips.length });
     $('inTripBody').innerHTML = trips.map(trip => {
       const links = trip.delivery_trip_pos || [];
       const correctionLinks = links.filter(link => link.delivery_status === 'Needs Correction'), needsCorrection = correctionLinks.length > 0;
       const chips = links.map(link => {
         const poCopy = link.po_attachment_link
-          ? `<a class="trip-doc-link po-copy-link" href="${safe(link.po_attachment_link)}" target="_blank" rel="noopener">View PO copy</a>`
-          : '<span class="trip-doc-missing">PO copy unavailable</span>';
-        return `<div class="trip-po-card"><span class="trip-po-chip ${link.delivery_status === 'Needs Correction' ? 'needs-correction' : ''}">${safe(link.purchase_orders?.po_number || 'PO')} · ${safe(link.purchase_orders?.delivery_location || 'Location pending')}${link.delivery_status === 'Needs Correction' ? `<small>${safe(link.correction_reason || 'Correction requested')}</small>` : ''}</span>${poCopy}</div>`;
+          ? `<a class="trip-doc-link po-copy-link" href="${safe(link.po_attachment_link)}" target="_blank" rel="noopener">${safe(t('viewPoCopy'))}</a>`
+          : `<span class="trip-doc-missing">${safe(t('poCopyUnavailable'))}</span>`;
+        return `<div class="trip-po-card"><span class="trip-po-chip ${link.delivery_status === 'Needs Correction' ? 'needs-correction' : ''}">${safe(link.purchase_orders?.po_number || 'PO')} · ${safe(link.purchase_orders?.delivery_location || t('locationPending'))}${link.delivery_status === 'Needs Correction' ? `<small>${safe(link.correction_reason || t('correctionRequested'))}</small>` : ''}</span>${poCopy}</div>`;
       }).join('');
       const invoices = links.map(link => {
         const invoiceCopy = link.invoice_attachment_link
-          ? `<a class="trip-doc-link invoice-copy-link" href="${safe(link.invoice_attachment_link)}" target="_blank" rel="noopener">View invoice copy</a>`
-          : '<span class="trip-doc-missing">Invoice copy unavailable</span>';
+          ? `<a class="trip-doc-link invoice-copy-link" href="${safe(link.invoice_attachment_link)}" target="_blank" rel="noopener">${safe(t('viewInvoiceCopy'))}</a>`
+          : `<span class="trip-doc-missing">${safe(t('invoiceCopyUnavailable'))}</span>`;
         return `<div class="trip-invoice-row"><div><strong>${safe(link.purchase_orders?.po_number || 'PO')}:</strong> ${safe(link.invoice_number || trip.invoice_number || '—')} · ${money(link.allocated_cost)}</div>${invoiceCopy}</div>`;
       }).join('');
       const tempoCost = Number(trip.actual_freight || 0);
-      return `<tr class="${needsCorrection ? 'correction-trip' : ''}"><td>${localDate(trip.trip_date)}</td><td><div class="trip-po-list">${chips || 'No POs linked'}</div></td><td>${safe(trip.vehicle_number || trip.transporter || '—')}<span class="po-secondary">${safe(trip.driver_name || '')}</span></td><td>${invoices || '—'}</td><td><span class="executive-status ${needsCorrection ? 'needs-correction' : ''}">${needsCorrection ? 'Needs Correction' : safe(trip.status)}</span></td><td>${tempoCost ? money(tempoCost) : '—'}</td><td><div class="trip-actions"><button class="text-btn edit-trip-btn" type="button" data-trip-id="${trip.id}">Edit</button><button class="complete-trip-btn" type="button" data-trip-id="${trip.id}">${needsCorrection ? 'Correct delivery' : 'Complete delivery'}</button></div></td></tr>`;
+      return `<tr class="${needsCorrection ? 'correction-trip' : ''}"><td>${localDate(trip.trip_date)}</td><td><div class="trip-po-list">${chips || safe(t('noPosLinked'))}</div></td><td>${safe(trip.vehicle_number || trip.transporter || '—')}<span class="po-secondary">${safe(trip.driver_name || '')}</span></td><td>${invoices || '—'}</td><td><span class="executive-status ${needsCorrection ? 'needs-correction' : ''}">${safe(needsCorrection ? t('needsCorrection') : statusLabel(trip.status))}</span></td><td>${tempoCost ? money(tempoCost) : '—'}</td><td><div class="trip-actions"><button class="text-btn edit-trip-btn" type="button" data-trip-id="${trip.id}">${safe(t('edit'))}</button><button class="complete-trip-btn" type="button" data-trip-id="${trip.id}">${safe(needsCorrection ? t('correctDelivery') : t('completeDelivery'))}</button></div></td></tr>`;
     }).join('');
     $('tripEmptyState').classList.toggle('hidden', trips.length !== 0);
   }
@@ -354,22 +501,22 @@
     const editTrip = editingTripId ? trips.find(trip => trip.id === editingTripId) : null;
     const editLinks = editTrip?.delivery_trip_pos || [];
     const chosen = editTrip ? editLinks.map(link => records.find(record => record.id === link.purchase_order_id)).filter(Boolean) : records.filter(record => selectedPoIds.has(record.id));
-    if (!chosen.length) { error.textContent = 'Select at least one PO first.'; return; }
-    if (!tripStorageReady) { error.textContent = 'Trip database setup is not ready. Run logistics-supabase.sql once in Supabase.'; return; }
+    if (!chosen.length) { error.textContent = t('selectAtLeastOne'); return; }
+    if (!tripStorageReady) { error.textContent = t('tripSetupNotReady'); return; }
     const button = $('createTripBtn');
     try {
-      button.disabled = true; button.textContent = editTrip ? 'Saving changes…' : 'Creating trip…';
+      button.disabled = true; button.textContent = editTrip ? t('savingChanges') : t('creatingTrip');
       const freight = Number($('tripFreight').value || 0), tripId = editTrip?.id || crypto.randomUUID();
       const details = chosen.map(record => {
         const row = $('tripPoDetails').querySelector(`tr[data-po-id="${record.id}"]`);
         return { record, invoiceState: row.dataset.invoiceState || 'idle', existingInvoicePath: row.dataset.existingInvoice || '', invoiceNumber: row.querySelector('.po-invoice-number').value.trim(), invoiceDate: row.querySelector('.po-invoice-date').value, invoiceFile: row.querySelector('.po-invoice-file').files[0], allocatedCost: Number(row.querySelector('.po-allocated-cost').value || 0) };
       });
-      for (const detail of details) if (detail.invoiceState === 'reading') throw new Error(`Wait for invoice reading to finish for PO ${detail.record.po_number}.`);
-      for (const detail of details) if (detail.invoiceState === 'mismatch') throw new Error(`The uploaded invoice does not match PO ${detail.record.po_number}. Replace it before saving.`);
-      for (const detail of details) if (!detail.invoiceNumber || !detail.invoiceDate || (!detail.invoiceFile && !detail.existingInvoicePath)) throw new Error(`Upload and verify the invoice for PO ${detail.record.po_number}.`);
+      for (const detail of details) if (detail.invoiceState === 'reading') throw new Error(t('waitForInvoice', { po: detail.record.po_number }));
+      for (const detail of details) if (detail.invoiceState === 'mismatch') throw new Error(t('replaceWrongInvoice', { po: detail.record.po_number }));
+      for (const detail of details) if (!detail.invoiceNumber || !detail.invoiceDate || (!detail.invoiceFile && !detail.existingInvoicePath)) throw new Error(t('uploadVerifyInvoice', { po: detail.record.po_number }));
       await Promise.all(details.map(async detail => { detail.invoicePath = detail.invoiceFile ? await uploadTripInvoice(tripId, detail.record.id, detail.invoiceFile) : detail.existingInvoicePath; }));
       const transporterId = $('tripTransporter').value, transporterName = $('tripTransporter').selectedOptions[0]?.textContent?.trim() || '';
-      if (!transporterId) throw new Error('Select a transporter from the Transporter Master.');
+      if (!transporterId) throw new Error(t('selectTransporterError'));
       const tripPayload = { trip_date: $('tripDate').value, transporter_id: transporterId, transporter: transporterName, vehicle_number: $('tripVehicle').value.trim() || null, driver_name: $('tripDriver').value.trim() || null, driver_phone: $('tripDriverPhone').value.trim() || null, quoted_cost: freight, actual_freight: freight };
       if (editTrip) {
         await api(`/rest/v1/delivery_trips?id=eq.${encodeURIComponent(tripId)}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json', Prefer: 'return=minimal' }, body: JSON.stringify(tripPayload) });
@@ -380,9 +527,9 @@
         await api('/rest/v1/delivery_trip_pos', { method: 'POST', headers: { 'Content-Type': 'application/json', Prefer: 'return=minimal' }, body: JSON.stringify(links) });
         selectedPoIds.clear();
       }
-      closeTripDialog(); await loadData(); toast(editTrip ? 'Trip changes saved.' : 'Trip created — selected POs moved to POs in trip.');
-    } catch (err) { error.textContent = err.message || `Could not ${editTrip ? 'update' : 'create'} the trip.`; }
-    finally { button.disabled = false; button.textContent = editTrip ? 'Save trip changes' : `Create trip with ${chosen.length} PO${chosen.length === 1 ? '' : 's'}`; }
+      closeTripDialog(); await loadData(); toast(editTrip ? t('tripChangesSaved') : t('tripCreated'));
+    } catch (err) { error.textContent = err.message || t('couldNotSaveTrip'); }
+    finally { button.disabled = false; button.textContent = editTrip ? t('saveTripChanges') : t('createTripCount', { count: chosen.length }); }
   }
 
   function closeCompleteTripDialog() {
@@ -398,11 +545,11 @@
     const correctionLinks = (trip.delivery_trip_pos || []).filter(link => link.delivery_status === 'Needs Correction');
     const links = correctionLinks.length ? correctionLinks : (trip.delivery_trip_pos || []);
     const incompleteInvoice = links.find(link => !(link.invoice_number || trip.invoice_number) || !(link.invoice_date || trip.invoice_date) || !(link.invoice_attachment_url || trip.invoice_attachment_url));
-    if (incompleteInvoice) { toast(`Edit trip and complete the invoice details for PO ${incompleteInvoice.purchase_orders?.po_number || ''}.`); return; }
+    if (incompleteInvoice) { toast(t('editInvoiceFirst', { po: incompleteInvoice.purchase_orders?.po_number || '' })); return; }
     completingTripId = tripId; $('completeTripForm').reset(); $('completeTripError').textContent = '';
-    $('completeTripSummary').textContent = correctionLinks.length ? `${links.length} PO${links.length === 1 ? '' : 's'} returned by the owner — upload the corrected delivery slip and final cost.` : `${links.length} PO${links.length === 1 ? '' : 's'} in this trip — complete each delivery separately.`;
+    $('completeTripSummary').textContent = correctionLinks.length ? t('returnedByOwner', { count: links.length }) : t('completeEachDelivery', { count: links.length });
     $('completeTripPoDetails').innerHTML = links.map(link => `<tr data-po-id="${link.purchase_order_id}">
-      <td><span class="po-main">${safe(link.purchase_orders?.po_number || 'PO')}</span><span class="po-secondary">${safe(link.purchase_orders?.delivery_location || 'Location pending')}</span>${link.delivery_status === 'Needs Correction' ? `<span class="correction-note">Owner correction: ${safe(link.correction_reason || 'Please review this delivery.')}</span>` : ''}</td>
+      <td><span class="po-main">${safe(link.purchase_orders?.po_number || 'PO')}</span><span class="po-secondary">${safe(link.purchase_orders?.delivery_location || t('locationPending'))}</span>${link.delivery_status === 'Needs Correction' ? `<span class="correction-note">${safe(t('ownerCorrection', { reason: link.correction_reason || t('pleaseReview') }))}</span>` : ''}</td>
       <td><input class="complete-po-cost" type="number" min="0" step="0.01" placeholder="0" value="${Number(link.allocated_cost || 0) || ''}" /></td>
       <td><input class="complete-po-slip" type="file" accept="application/pdf,image/jpeg,image/png" required /></td>
     </tr>`).join('');
@@ -412,24 +559,25 @@
   async function completeTrip(event) {
     event.preventDefault(); const error = $('completeTripError'); error.textContent = '';
     const trip = trips.find(item => item.id === completingTripId);
-    if (!trip) { error.textContent = 'Trip not found. Refresh and try again.'; return; }
+    if (!trip) { error.textContent = t('tripNotFound'); return; }
     const details = [...$('completeTripPoDetails').querySelectorAll('tr')].map(row => ({ poId: row.dataset.poId, finalCost: Number(row.querySelector('.complete-po-cost').value || 0), slip: row.querySelector('.complete-po-slip').files?.[0], poNumber: row.querySelector('.po-main')?.textContent || 'PO' }));
-    const missingSlip = details.find(detail => !detail.slip); if (missingSlip) { error.textContent = `Upload the signed delivery slip for PO ${missingSlip.poNumber}.`; return; }
+    const missingSlip = details.find(detail => !detail.slip); if (missingSlip) { error.textContent = t('uploadSlipForPo', { po: missingSlip.poNumber }); return; }
     const button = $('completeTripBtn');
     try {
-      button.disabled = true; button.textContent = 'Completing delivery…';
+      button.disabled = true; button.textContent = t('completingDelivery');
       const deliveries = await Promise.all(details.map(async detail => ({ purchase_order_id: detail.poId, note_path: await uploadTripDeliverySlip(trip.id, detail.poId, detail.slip), final_cost: detail.finalCost })));
       await api('/rest/v1/rpc/complete_delivery_trip', { method: 'POST', headers: { 'Content-Type': 'application/json', Prefer: 'return=minimal' }, body: JSON.stringify({ trip: trip.id, deliveries }) });
       const corrected = (trip.delivery_trip_pos || []).some(link => link.delivery_status === 'Needs Correction');
-      closeCompleteTripDialog(); await loadData(); toast(corrected ? 'Corrected delivery resubmitted to the owner.' : 'Delivery completed — linked POs updated in the owner tracker.');
-    } catch (err) { error.textContent = err.message || 'Could not complete the delivery.'; }
-    finally { button.disabled = false; button.textContent = 'Complete delivery'; }
+      closeCompleteTripDialog(); await loadData(); toast(corrected ? t('correctedResubmitted') : t('deliveryUpdated'));
+    } catch (err) { error.textContent = err.message || t('couldNotComplete'); }
+    finally { button.disabled = false; button.textContent = t('completeDelivery'); }
   }
 
   function toggleCustomDates() { $('customDateFilters').classList.toggle('hidden', $('dateRangeFilter').value !== 'custom'); }
   function clearFilters() { $('searchInput').value = ''; $('statusFilter').value = ''; $('dateRangeFilter').value = ''; $('dateFrom').value = ''; $('dateTo').value = ''; toggleCustomDates(); render(); }
   function bindEvents() {
-    $('loginForm').addEventListener('submit', async event => { event.preventDefault(); $('loginError').textContent = ''; try { await signIn($('emailInput').value.trim(), $('passwordInput').value); await start(); } catch (error) { $('loginError').textContent = error.message || 'Sign in failed.'; } });
+    ['languageSelect', 'loginLanguageSelect'].forEach(id => $(id).addEventListener('change', event => applyLanguage(event.target.value)));
+    $('loginForm').addEventListener('submit', async event => { event.preventDefault(); $('loginError').textContent = ''; try { await signIn($('emailInput').value.trim(), $('passwordInput').value); await start(); } catch (error) { $('loginError').textContent = error.message || t('signInFailed'); } });
     $('signOutBtn').addEventListener('click', signOut); $('refreshBtn').addEventListener('click', loadData); $('clearFilters').addEventListener('click', clearFilters); $('tripPlanForm').addEventListener('submit', saveTrip);
     $('openTripDialogBtn').addEventListener('click', openCreateTrip);
     $('closeTripDialogBtn').addEventListener('click', closeTripDialog); $('cancelTripBtn').addEventListener('click', closeTripDialog);
@@ -446,12 +594,12 @@
     $('selectAllPos').addEventListener('change', event => { filteredRecords().forEach(record => event.target.checked ? selectedPoIds.add(record.id) : selectedPoIds.delete(record.id)); render(); });
   }
   async function start() {
-    if (!BASE_URL || !PUBLIC_KEY) { show('loginScreen'); $('loginError').textContent = 'Supabase is not configured.'; return; }
+    if (!BASE_URL || !PUBLIC_KEY) { show('loginScreen'); $('loginError').textContent = t('notConfigured'); return; }
     $('signedInAs').textContent = session?.user?.email || ''; hide('loginScreen'); show('app'); $('tripDate').value = today(); await loadData(); clearInterval(refreshTimer); refreshTimer = setInterval(loadData, 60000);
   }
 
-  bindEvents(); toggleCustomDates();
+  bindEvents(); applyLanguage(currentLanguage); toggleCustomDates();
   try { session = JSON.parse(sessionStorage.getItem(SESSION_KEY) || 'null'); } catch (_) { session = null; }
-  if (session?.access_token && session?.refresh_token) start().catch(error => { hide('app'); show('loginScreen'); $('loginError').textContent = error.message || 'Please sign in again.'; });
+  if (session?.access_token && session?.refresh_token) start().catch(error => { hide('app'); show('loginScreen'); $('loginError').textContent = error.message || t('signInAgain'); });
   else { sessionStorage.removeItem(SESSION_KEY); show('loginScreen'); }
 })();

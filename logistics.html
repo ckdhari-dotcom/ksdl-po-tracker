@@ -7,7 +7,7 @@
     <title>KSDL Dispatch & Invoice Review</title>
     <link rel="stylesheet" href="styles.css" />
     <link rel="stylesheet" href="mobile-filters.css" />
-    <link rel="stylesheet" href="logistics.css?v=accountant-review-20260723" />
+    <link rel="stylesheet" href="logistics.css?v=language-pack-20260724" />
     <style>
       .trip-plan-dialog{width:min(1120px,calc(100% - 24px))}
       .po-detail-heading{margin-top:20px;padding-top:17px;border-top:1px solid var(--line)}
@@ -24,70 +24,72 @@
   <body>
     <section id="loginScreen" class="login-screen hidden">
       <form id="loginForm" class="login-card">
-        <span class="eyebrow">KSDL DISTRIBUTION</span>
-        <h1>Dispatch & Invoice Review</h1>
-        <p>For the accountant and delivery executive. Sign in with your authorised business email.</p>
-        <label>Email<input id="emailInput" type="email" autocomplete="username" required autofocus /></label>
-        <label>Password<input id="passwordInput" type="password" autocomplete="current-password" required /></label>
+        <span class="eyebrow" data-i18n="brand">KSDL DISTRIBUTION</span>
+        <h1 data-i18n="pageTitle">Dispatch & Invoice Review</h1>
+        <p data-i18n="loginSubtitle">For the accountant and delivery executive. Sign in with your authorised business email.</p>
+        <label><span data-i18n="language">Language</span><select id="loginLanguageSelect" class="language-select"><option value="en">English</option><option value="gu">ગુજરાતી</option><option value="hi">हिन्दी</option></select></label>
+        <label><span data-i18n="email">Email</span><input id="emailInput" type="email" autocomplete="username" required autofocus /></label>
+        <label><span data-i18n="password">Password</span><input id="passwordInput" type="password" autocomplete="current-password" required /></label>
         <p id="loginError" class="error" aria-live="polite"></p>
-        <button>Sign in</button>
+        <button data-i18n="signIn">Sign in</button>
       </form>
     </section>
 
     <main id="app" class="app-shell hidden">
       <header class="topbar">
-        <div><span class="eyebrow">KSDL DISTRIBUTION</span><h1>Dispatch & Invoice Review</h1></div>
+        <div><span class="eyebrow" data-i18n="brand">KSDL DISTRIBUTION</span><h1 data-i18n="pageTitle">Dispatch & Invoice Review</h1></div>
         <div class="top-actions">
           <span id="connectionStatus" class="connection-status">Connecting…</span>
           <span id="signedInAs" class="connection-status"></span>
-          <button id="refreshBtn" type="button">Refresh</button>
-          <button id="signOutBtn" class="text-btn" type="button">Sign out</button>
+          <label class="top-language"><span data-i18n="language">Language</span><select id="languageSelect" class="language-select" aria-label="Language"><option value="en">English</option><option value="gu">ગુજરાતી</option><option value="hi">हिन्दी</option></select></label>
+          <button id="refreshBtn" type="button" data-i18n="refresh">Refresh</button>
+          <button id="signOutBtn" class="text-btn" type="button" data-i18n="signOut">Sign out</button>
         </div>
       </header>
 
       <section class="summary-grid" aria-label="Open PO summary">
-        <article><span>Total open POs</span><strong id="openCount">0</strong><small id="openValue">₹0 value</small></article>
-        <article><span>Received</span><strong id="receivedCount">0</strong><small>Waiting for planning</small></article>
-        <article><span>Scheduled</span><strong id="scheduledCount">0</strong><small>Planned for dispatch</small></article>
-        <article><span>In transit</span><strong id="transitCount">0</strong><small>Material on the road</small></article>
-        <article class="attention"><span>Partially delivered</span><strong id="partialCount">0</strong><small>Balance still pending</small></article>
+        <article><span data-i18n="totalOpenPos">Total open POs</span><strong id="openCount">0</strong><small id="openValue">₹0 value</small></article>
+        <article><span data-i18n="received">Received</span><strong id="receivedCount">0</strong><small data-i18n="waitingPlanning">Waiting for planning</small></article>
+        <article><span data-i18n="scheduled">Scheduled</span><strong id="scheduledCount">0</strong><small data-i18n="plannedDispatch">Planned for dispatch</small></article>
+        <article><span data-i18n="inTransit">In transit</span><strong id="transitCount">0</strong><small data-i18n="materialOnRoad">Material on the road</small></article>
+        <article class="attention"><span data-i18n="partiallyDelivered">Partially delivered</span><strong id="partialCount">0</strong><small data-i18n="balancePending">Balance still pending</small></article>
       </section>
 
       <section class="toolbar executive-toolbar">
-        <label class="search"><span>⌕</span><input id="searchInput" placeholder="Search PO, customer, location, invoice or transporter" /></label>
+        <label class="search"><span>⌕</span><input id="searchInput" placeholder="Search PO, customer, location, invoice or transporter" data-i18n-placeholder="searchPlaceholder" /></label>
         <select id="statusFilter" aria-label="Filter by status">
-          <option value="">All open statuses</option>
-          <option>Received</option><option>Scheduled</option><option>In Transit</option><option>Partially Delivered</option>
+          <option value="" data-i18n="allOpenStatuses">All open statuses</option>
+          <option value="Received" data-i18n="received">Received</option><option value="Scheduled" data-i18n="scheduled">Scheduled</option><option value="In Transit" data-i18n="inTransit">In Transit</option><option value="Partially Delivered" data-i18n="partiallyDelivered">Partially Delivered</option>
         </select>
         <select id="dateRangeFilter" aria-label="Filter by PO date">
-          <option value="">All dates</option>
-          <option value="current">Current month</option>
-          <option value="last">Last month</option>
-          <option value="custom">Custom dates</option>
+          <option value="" data-i18n="allDates">All dates</option>
+          <option value="current" data-i18n="currentMonth">Current month</option>
+          <option value="last" data-i18n="lastMonth">Last month</option>
+          <option value="custom" data-i18n="customDates">Custom dates</option>
         </select>
         <div id="customDateFilters" class="custom-date-filters hidden">
-          <label class="date-filter">From<input id="dateFrom" type="date" /></label>
-          <label class="date-filter">To<input id="dateTo" type="date" /></label>
+          <label class="date-filter"><span data-i18n="from">From</span><input id="dateFrom" type="date" /></label>
+          <label class="date-filter"><span data-i18n="to">To</span><input id="dateTo" type="date" /></label>
         </div>
-        <button id="clearFilters" class="text-btn" type="button">Clear filters</button>
+        <button id="clearFilters" class="text-btn" type="button" data-i18n="clearFilters">Clear filters</button>
       </section>
 
       <section class="table-card">
         <div class="table-title">
-          <div><h2>Open purchase orders</h2><p id="resultCount">0 records</p></div>
+          <div><h2 data-i18n="openPurchaseOrders">Open purchase orders</h2><p id="resultCount">0 records</p></div>
           <button id="openTripDialogBtn" class="primary" type="button" disabled>Create new trip (0)</button>
         </div>
         <div class="table-wrap">
           <table>
             <thead><tr>
-              <th><input id="selectAllPos" type="checkbox" aria-label="Select all visible POs" /></th><th>PO / Customer</th><th>PO Date</th><th>Status</th><th>Delivery location</th><th>PO Value</th><th>Delivery date</th><th>Invoice</th><th>Transport</th><th>Assigned</th><th>Age</th>
+              <th><input id="selectAllPos" type="checkbox" aria-label="Select all visible POs" /></th><th data-i18n="poCustomer">PO / Customer</th><th data-i18n="poDate">PO Date</th><th data-i18n="status">Status</th><th data-i18n="deliveryLocation">Delivery location</th><th data-i18n="poValue">PO Value</th><th data-i18n="deliveryDate">Delivery date</th><th data-i18n="invoice">Invoice</th><th data-i18n="transport">Transport</th><th data-i18n="assigned">Assigned</th><th data-i18n="age">Age</th>
             </tr></thead>
             <tbody id="poTableBody"></tbody>
           </table>
         </div>
         <div id="emptyState" class="empty-state hidden">
-          <h3>No open POs found</h3>
-          <p>There are no POs matching the current search and filters.</p>
+          <h3 data-i18n="noOpenPos">No open POs found</h3>
+          <p data-i18n="noOpenPosHelp">There are no POs matching the current search and filters.</p>
         </div>
       </section>
 
@@ -95,42 +97,42 @@
         <form id="tripPlanForm">
           <div class="trip-dialog-head"><div><span id="tripDialogEyebrow" class="eyebrow">PLAN FOR DELIVERY</span><h2 id="tripDialogTitle">Create new trip</h2><p id="selectedPoSummary">Selected POs will appear here.</p></div><button id="closeTripDialogBtn" class="icon-btn" type="button" aria-label="Close">×</button></div>
           <div class="plan-grid">
-            <label>Trip date*<input id="tripDate" type="date" required /></label>
-            <label>Transporter / tempo owner*<select id="tripTransporter" required><option value="">Select transporter</option></select></label>
-            <label>Vehicle number<input id="tripVehicle" placeholder="GJ-01-AB-1234" /></label>
-            <label>Driver name<input id="tripDriver" /></label>
-            <label>Driver phone<input id="tripDriverPhone" inputmode="tel" /></label>
-            <label>Vehicle / tempo cost (₹)<input id="tripFreight" type="number" min="0" step="0.01" placeholder="Optional" /></label>
+            <label><span data-i18n="tripDate">Trip date*</span><input id="tripDate" type="date" required /></label>
+            <label><span data-i18n="transporterOwner">Transporter / tempo owner*</span><select id="tripTransporter" required><option value="" data-i18n="selectTransporter">Select transporter</option></select></label>
+            <label><span data-i18n="vehicleNumber">Vehicle number</span><input id="tripVehicle" placeholder="GJ-01-AB-1234" /></label>
+            <label><span data-i18n="driverName">Driver name</span><input id="tripDriver" /></label>
+            <label><span data-i18n="driverPhone">Driver phone</span><input id="tripDriverPhone" inputmode="tel" /></label>
+            <label><span data-i18n="vehicleCost">Vehicle / tempo cost (₹)</span><input id="tripFreight" type="number" min="0" step="0.01" placeholder="Optional" data-i18n-placeholder="optional" /></label>
           </div>
-          <div class="po-detail-heading"><div><h3>Invoice and delivery cost for each PO</h3><p>Upload each Tally invoice PDF. The invoice number and date will be filled automatically and checked against the selected PO.</p></div></div>
-          <div class="po-detail-wrap"><table class="po-detail-table"><thead><tr><th>PO / location</th><th>Invoice number*</th><th>Invoice date*</th><th>Invoice copy</th><th>Allocated cost (₹)</th></tr></thead><tbody id="tripPoDetails"></tbody></table></div>
+          <div class="po-detail-heading"><div><h3 data-i18n="invoiceCostHeading">Invoice and delivery cost for each PO</h3><p data-i18n="invoiceCostHelp">Upload each Tally invoice PDF. The invoice number and date will be filled automatically and checked against the selected PO.</p></div></div>
+          <div class="po-detail-wrap"><table class="po-detail-table"><thead><tr><th data-i18n="poLocation">PO / location</th><th data-i18n="invoiceNumber">Invoice number*</th><th data-i18n="invoiceDate">Invoice date*</th><th data-i18n="invoiceCopy">Invoice copy</th><th data-i18n="allocatedCost">Allocated cost (₹)</th></tr></thead><tbody id="tripPoDetails"></tbody></table></div>
           <p id="tripPlanError" class="error" aria-live="polite"></p>
-          <div class="plan-actions"><button id="cancelTripBtn" type="button">Cancel</button><button id="createTripBtn" class="primary" disabled>Create trip with 0 POs</button></div>
+          <div class="plan-actions"><button id="cancelTripBtn" type="button" data-i18n="cancel">Cancel</button><button id="createTripBtn" class="primary" disabled>Create trip with 0 POs</button></div>
         </form>
       </dialog>
 
       <dialog id="completeTripDialog" class="complete-trip-dialog">
         <form id="completeTripForm">
-          <div class="trip-dialog-head"><div><span class="eyebrow">DELIVERY COMPLETED</span><h2>Complete delivery</h2><p id="completeTripSummary">Upload the delivery slip and final cost separately for every PO.</p></div><button id="closeCompleteTripBtn" class="icon-btn" type="button" aria-label="Close">×</button></div>
-          <div class="complete-po-wrap"><table class="complete-po-table"><thead><tr><th>PO / location</th><th>Final transport cost (₹)</th><th>Signed delivery slip*</th></tr></thead><tbody id="completeTripPoDetails"></tbody></table></div>
-          <div class="complete-total"><span>Final total transport cost</span><strong id="completeTripTotal">₹0</strong></div>
-          <p class="completion-note">The total is calculated automatically from all PO costs. Each PO will receive its own delivery slip, final cost, invoice details and invoice copy in the owner tracker.</p>
+          <div class="trip-dialog-head"><div><span class="eyebrow" data-i18n="deliveryCompleted">DELIVERY COMPLETED</span><h2 data-i18n="completeDelivery">Complete delivery</h2><p id="completeTripSummary">Upload the delivery slip and final cost separately for every PO.</p></div><button id="closeCompleteTripBtn" class="icon-btn" type="button" aria-label="Close">×</button></div>
+          <div class="complete-po-wrap"><table class="complete-po-table"><thead><tr><th data-i18n="poLocation">PO / location</th><th data-i18n="finalTransportCost">Final transport cost (₹)</th><th data-i18n="signedDeliverySlip">Signed delivery slip*</th></tr></thead><tbody id="completeTripPoDetails"></tbody></table></div>
+          <div class="complete-total"><span data-i18n="finalTotalCost">Final total transport cost</span><strong id="completeTripTotal">₹0</strong></div>
+          <p class="completion-note" data-i18n="completionNote">The total is calculated automatically from all PO costs. Each PO will receive its own delivery slip, final cost, invoice details and invoice copy in the owner tracker.</p>
           <p id="completeTripError" class="error" aria-live="polite"></p>
-          <div class="plan-actions"><button id="cancelCompleteTripBtn" type="button">Cancel</button><button id="completeTripBtn" class="primary" type="submit">Complete delivery</button></div>
+          <div class="plan-actions"><button id="cancelCompleteTripBtn" type="button" data-i18n="cancel">Cancel</button><button id="completeTripBtn" class="primary" type="submit" data-i18n="completeDelivery">Complete delivery</button></div>
         </form>
       </dialog>
 
       <section class="table-card in-trip-card">
-        <div class="table-title"><div><span class="eyebrow">STEP 4</span><h2>POs in trip</h2><p id="tripCount">0 active trips</p><p class="review-hint">Open the PO and invoice copies here to verify that the correct documents are attached.</p></div></div>
-        <div class="table-wrap"><table class="trip-table"><thead><tr><th>Trip date</th><th>PO / location / PO copy</th><th>Tempo / driver</th><th>Invoice / invoice copy</th><th>Status</th><th>Tempo cost</th><th>Action</th></tr></thead><tbody id="inTripBody"></tbody></table></div>
-        <div id="tripEmptyState" class="empty-state"><h3>No POs are in a trip</h3><p>Tick POs above and create the first delivery plan.</p></div>
+        <div class="table-title"><div><span class="eyebrow" data-i18n="step4">STEP 4</span><h2 data-i18n="posInTrip">POs in trip</h2><p id="tripCount">0 active trips</p><p class="review-hint" data-i18n="reviewHint">Open the PO and invoice copies here to verify that the correct documents are attached.</p></div></div>
+        <div class="table-wrap"><table class="trip-table"><thead><tr><th data-i18n="tripDatePlain">Trip date</th><th data-i18n="poLocationCopy">PO / location / PO copy</th><th data-i18n="tempoDriver">Tempo / driver</th><th data-i18n="invoiceAndCopy">Invoice / invoice copy</th><th data-i18n="status">Status</th><th data-i18n="tempoCost">Tempo cost</th><th data-i18n="action">Action</th></tr></thead><tbody id="inTripBody"></tbody></table></div>
+        <div id="tripEmptyState" class="empty-state"><h3 data-i18n="noPosInTrip">No POs are in a trip</h3><p data-i18n="noPosInTripHelp">Tick POs above and create the first delivery plan.</p></div>
       </section>
-      <p class="footnote">This shared page lets the accountant verify documents and the delivery executive plan and complete trips.</p>
+      <p class="footnote" data-i18n="footerNote">This shared page lets the accountant verify documents and the delivery executive plan and complete trips.</p>
     </main>
 
     <div id="toast" class="toast" role="status"></div>
     <script src="config.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-    <script src="logistics.js?v=accountant-review-20260723"></script>
+    <script src="logistics.js?v=language-pack-20260724"></script>
   </body>
 </html>

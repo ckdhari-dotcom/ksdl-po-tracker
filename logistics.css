@@ -34,3 +34,7 @@
 .invoice-copy-link{background:#eaf1ff;color:#245ba7}
 .invoice-copy-link:hover{background:#dce8ff}
 .trip-doc-missing{color:var(--muted);font-size:.72rem;font-style:italic}
+.language-select{min-height:38px;padding:7px 30px 7px 10px;border:1px solid var(--line);border-radius:8px;background:#fff;color:var(--ink);font:inherit;font-weight:700}
+.top-language{display:flex;align-items:center;gap:6px;color:var(--muted);font-size:.75rem;font-weight:700}
+.top-language .language-select{min-width:110px}
+@media(max-width:760px){.top-language{order:4;width:100%;justify-content:flex-end}.top-language .language-select{min-width:125px}}
