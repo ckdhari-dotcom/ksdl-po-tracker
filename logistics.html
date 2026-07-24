@@ -7,7 +7,7 @@
     <title>KSDL Dispatch & Invoice Review</title>
     <link rel="stylesheet" href="styles.css" />
     <link rel="stylesheet" href="mobile-filters.css" />
-    <link rel="stylesheet" href="logistics.css?v=language-pack-20260724" />
+    <link rel="stylesheet" href="logistics.css?v=manual-po-20260724" />
     <style>
       .trip-plan-dialog{width:min(1120px,calc(100% - 24px))}
       .po-detail-heading{margin-top:20px;padding-top:17px;border-top:1px solid var(--line)}
@@ -77,7 +77,10 @@
       <section class="table-card">
         <div class="table-title">
           <div><h2 data-i18n="openPurchaseOrders">Open purchase orders</h2><p id="resultCount">0 records</p></div>
-          <button id="openTripDialogBtn" class="primary" type="button" disabled>Create new trip (0)</button>
+          <div class="table-title-actions">
+            <button id="openManualPoBtn" class="text-btn manual-po-button" type="button" data-i18n="createManualPo">+ Create manual PO</button>
+            <button id="openTripDialogBtn" class="primary" type="button" disabled>Create new trip (0)</button>
+          </div>
         </div>
         <div class="table-wrap">
           <table>
@@ -92,6 +95,36 @@
           <p data-i18n="noOpenPosHelp">There are no POs matching the current search and filters.</p>
         </div>
       </section>
+
+      <dialog id="manualPoDialog" class="manual-po-dialog">
+        <form id="manualPoForm">
+          <div class="trip-dialog-head">
+            <div>
+              <span class="eyebrow" data-i18n="manualPoEyebrow">MANUAL PURCHASE ORDER</span>
+              <h2 data-i18n="manualPoTitle">Create a new PO</h2>
+              <p data-i18n="manualPoHelp">Enter the PO details below. It will be saved as Received and appear in the open PO list immediately.</p>
+            </div>
+            <button id="closeManualPoBtn" class="icon-btn" type="button" aria-label="Close">×</button>
+          </div>
+          <div class="manual-po-grid">
+            <label><span data-i18n="customerName">Customer name*</span><input id="manualCustomer" autocomplete="organization" required data-i18n-placeholder="customerPlaceholder" placeholder="Example: DMart" /></label>
+            <label><span data-i18n="manualPoNumber">PO number*</span><input id="manualPoNumber" required inputmode="numeric" data-i18n-placeholder="poNumberPlaceholder" placeholder="Enter PO number" /></label>
+            <label><span data-i18n="manualLocation">Delivery location*</span><input id="manualLocation" required data-i18n-placeholder="locationPlaceholder" placeholder="Example: Bopal" /></label>
+            <label><span data-i18n="manualPoValue">PO value (₹)</span><input id="manualPoValue" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0" /></label>
+            <label><span data-i18n="manualPoDate">PO date*</span><input id="manualPoDate" type="date" required /></label>
+            <label><span data-i18n="poReceivedDate">PO received date*</span><input id="manualReceivedDate" type="date" required /></label>
+            <label><span data-i18n="manualDeliveryDate">Delivery date</span><input id="manualDeliveryDate" type="date" /></label>
+            <label><span data-i18n="manualAssignedTo">Assigned to</span><input id="manualAssignedTo" data-i18n-placeholder="assignedPlaceholder" placeholder="Staff name or email" /></label>
+            <label class="manual-po-span"><span data-i18n="poCopy">PO copy</span><input id="manualPoFile" type="file" accept="application/pdf,image/jpeg,image/png" /><small data-i18n="poCopyHelp">Optional PDF, JPG or PNG up to 10 MB.</small></label>
+            <label class="manual-po-span"><span data-i18n="remarks">Remarks</span><textarea id="manualRemarks" rows="3" data-i18n-placeholder="remarksPlaceholder" placeholder="Any special delivery instructions"></textarea></label>
+          </div>
+          <p id="manualPoError" class="error" aria-live="polite"></p>
+          <div class="plan-actions">
+            <button id="cancelManualPoBtn" type="button" data-i18n="cancel">Cancel</button>
+            <button id="saveManualPoBtn" class="primary" type="submit" data-i18n="savePo">Save PO</button>
+          </div>
+        </form>
+      </dialog>
 
       <dialog id="tripPlanDialog" class="trip-plan-dialog">
         <form id="tripPlanForm">
@@ -133,6 +166,6 @@
     <div id="toast" class="toast" role="status"></div>
     <script src="config.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-    <script src="logistics.js?v=sales-representative-20260724"></script>
+    <script src="logistics.js?v=manual-po-20260724"></script>
   </body>
 </html>

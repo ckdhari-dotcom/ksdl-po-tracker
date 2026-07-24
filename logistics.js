@@ -48,7 +48,16 @@
       couldNotSaveTrip: 'Could not save the trip.', couldNotComplete: 'Could not complete the delivery.', signInFailed: 'Sign in failed.', notConfigured: 'The app is not configured.', signInAgain: 'Please sign in again.',
       invoiceNumberPlaceholder: 'Invoice number',
       imageInvoiceManual: 'Image attached — enter the invoice number and date manually.', wrongInvoice: 'Wrong invoice: it belongs to PO {actual}, not {expected}.',
-      invoiceMatched: '✓ PO {po} matched', verifyInvoice: 'Please verify the invoice details manually.', savingChanges: 'Saving changes…', creatingTrip: 'Creating trip…'
+      invoiceMatched: '✓ PO {po} matched', verifyInvoice: 'Please verify the invoice details manually.', savingChanges: 'Saving changes…', creatingTrip: 'Creating trip…',
+      createManualPo: '+ Create manual PO', manualPoEyebrow: 'MANUAL PURCHASE ORDER', manualPoTitle: 'Create a new PO',
+      manualPoHelp: 'Enter the PO details below. It will be saved as Received and appear in the open PO list immediately.',
+      customerName: 'Customer name*', customerPlaceholder: 'Example: DMart', manualPoNumber: 'PO number*', poNumberPlaceholder: 'Enter PO number',
+      manualLocation: 'Delivery location*', locationPlaceholder: 'Example: Bopal', manualPoValue: 'PO value (₹)', manualPoDate: 'PO date*',
+      poReceivedDate: 'PO received date*', manualDeliveryDate: 'Delivery date', manualAssignedTo: 'Assigned to', assignedPlaceholder: 'Staff name or email',
+      poCopy: 'PO copy', poCopyHelp: 'Optional PDF, JPG or PNG up to 10 MB.', remarks: 'Remarks', remarksPlaceholder: 'Any special delivery instructions',
+      savePo: 'Save PO', savingPo: 'Saving PO…', manualPoSaved: 'Manual PO saved and added to the open PO list.',
+      manualDuplicate: 'This PO number already exists.', manualFileTooLarge: 'PO copy must be 10 MB or smaller.',
+      manualFileType: 'PO copy must be a PDF, JPG or PNG file.', couldNotSavePo: 'Could not save the PO.'
     },
     gu: {
       brand: 'KSDL ડિસ્ટ્રિબ્યુશન', pageTitle: 'ડિસ્પેચ અને ઇન્વૉઇસ ચકાસણી', loginSubtitle: 'એકાઉન્ટન્ટ અને સેલ્સ પ્રતિનિધિ માટે. તમારા અધિકૃત બિઝનેસ ઈમેલથી સાઇન ઇન કરો.',
@@ -88,7 +97,16 @@
       couldNotSaveTrip: 'ટ્રિપ સાચવી શકાઈ નથી.', couldNotComplete: 'ડિલિવરી પૂર્ણ થઈ શકી નથી.', signInFailed: 'સાઇન ઇન થઈ શક્યું નથી.', notConfigured: 'એપનું સેટઅપ પૂર્ણ નથી.', signInAgain: 'ફરી સાઇન ઇન કરો.',
       invoiceNumberPlaceholder: 'ઇન્વૉઇસ નંબર',
       imageInvoiceManual: 'ઇમેજ જોડાઈ — ઇન્વૉઇસ નંબર અને તારીખ જાતે દાખલ કરો.', wrongInvoice: 'ખોટું ઇન્વૉઇસ: આ PO {actual}નું છે, {expected}નું નથી.',
-      invoiceMatched: '✓ PO {po} મેળ ખાય છે', verifyInvoice: 'ઇન્વૉઇસ વિગતો જાતે ચકાસો.', savingChanges: 'ફેરફાર સાચવી રહ્યા છે…', creatingTrip: 'ટ્રિપ બની રહી છે…'
+      invoiceMatched: '✓ PO {po} મેળ ખાય છે', verifyInvoice: 'ઇન્વૉઇસ વિગતો જાતે ચકાસો.', savingChanges: 'ફેરફાર સાચવી રહ્યા છે…', creatingTrip: 'ટ્રિપ બની રહી છે…',
+      createManualPo: '+ મેન્યુઅલ PO બનાવો', manualPoEyebrow: 'મેન્યુઅલ પરચેઝ ઓર્ડર', manualPoTitle: 'નવો PO બનાવો',
+      manualPoHelp: 'નીચે POની વિગતો દાખલ કરો. તે મળેલ સ્થિતિમાં સાચવાશે અને તરત ઓપન PO યાદીમાં દેખાશે.',
+      customerName: 'ગ્રાહકનું નામ*', customerPlaceholder: 'ઉદાહરણ: DMart', manualPoNumber: 'PO નંબર*', poNumberPlaceholder: 'PO નંબર દાખલ કરો',
+      manualLocation: 'ડિલિવરી સ્થળ*', locationPlaceholder: 'ઉદાહરણ: Bopal', manualPoValue: 'PO મૂલ્ય (₹)', manualPoDate: 'PO તારીખ*',
+      poReceivedDate: 'PO મળ્યાની તારીખ*', manualDeliveryDate: 'ડિલિવરી તારીખ', manualAssignedTo: 'જવાબદારી', assignedPlaceholder: 'સ્ટાફનું નામ અથવા ઈમેલ',
+      poCopy: 'PO નકલ', poCopyHelp: 'વૈકલ્પિક PDF, JPG અથવા PNG, વધુમાં વધુ 10 MB.', remarks: 'નોંધ', remarksPlaceholder: 'કોઈ ખાસ ડિલિવરી સૂચના',
+      savePo: 'PO સાચવો', savingPo: 'PO સાચવાઈ રહ્યો છે…', manualPoSaved: 'મેન્યુઅલ PO સાચવાયો અને ઓપન PO યાદીમાં ઉમેરાયો.',
+      manualDuplicate: 'આ PO નંબર પહેલેથી હાજર છે.', manualFileTooLarge: 'PO નકલ 10 MB અથવા તેનાથી નાની હોવી જોઈએ.',
+      manualFileType: 'PO નકલ PDF, JPG અથવા PNG ફાઇલ હોવી જોઈએ.', couldNotSavePo: 'PO સાચવી શકાયો નથી.'
     },
     hi: {
       brand: 'KSDL डिस्ट्रीब्यूशन', pageTitle: 'डिस्पैच और इनवॉइस जाँच', loginSubtitle: 'अकाउंटेंट और सेल्स प्रतिनिधि के लिए। अपने अधिकृत बिज़नेस ईमेल से साइन इन करें।',
@@ -128,7 +146,16 @@
       couldNotSaveTrip: 'ट्रिप सहेजी नहीं जा सकी।', couldNotComplete: 'डिलीवरी पूरी नहीं हो सकी।', signInFailed: 'साइन इन नहीं हुआ।', notConfigured: 'ऐप का सेटअप पूरा नहीं है।', signInAgain: 'फिर से साइन इन करें।',
       invoiceNumberPlaceholder: 'इनवॉइस नंबर',
       imageInvoiceManual: 'इमेज जुड़ी — इनवॉइस नंबर और तारीख खुद भरें।', wrongInvoice: 'गलत इनवॉइस: यह PO {actual} का है, {expected} का नहीं।',
-      invoiceMatched: '✓ PO {po} मेल खाता है', verifyInvoice: 'इनवॉइस विवरण स्वयं जाँचें।', savingChanges: 'बदलाव सहेजे जा रहे हैं…', creatingTrip: 'ट्रिप बन रही है…'
+      invoiceMatched: '✓ PO {po} मेल खाता है', verifyInvoice: 'इनवॉइस विवरण स्वयं जाँचें।', savingChanges: 'बदलाव सहेजे जा रहे हैं…', creatingTrip: 'ट्रिप बन रही है…',
+      createManualPo: '+ मैन्युअल PO बनाएँ', manualPoEyebrow: 'मैन्युअल परचेज़ ऑर्डर', manualPoTitle: 'नया PO बनाएँ',
+      manualPoHelp: 'नीचे PO का विवरण भरें। यह प्राप्त स्थिति में सहेजा जाएगा और तुरंत खुले PO की सूची में दिखेगा।',
+      customerName: 'ग्राहक का नाम*', customerPlaceholder: 'उदाहरण: DMart', manualPoNumber: 'PO नंबर*', poNumberPlaceholder: 'PO नंबर दर्ज करें',
+      manualLocation: 'डिलीवरी स्थान*', locationPlaceholder: 'उदाहरण: Bopal', manualPoValue: 'PO मूल्य (₹)', manualPoDate: 'PO तारीख*',
+      poReceivedDate: 'PO प्राप्ति तारीख*', manualDeliveryDate: 'डिलीवरी तारीख', manualAssignedTo: 'जिम्मेदारी', assignedPlaceholder: 'स्टाफ का नाम या ईमेल',
+      poCopy: 'PO कॉपी', poCopyHelp: 'वैकल्पिक PDF, JPG या PNG, अधिकतम 10 MB.', remarks: 'टिप्पणी', remarksPlaceholder: 'कोई विशेष डिलीवरी निर्देश',
+      savePo: 'PO सहेजें', savingPo: 'PO सहेजा जा रहा है…', manualPoSaved: 'मैन्युअल PO सहेजा गया और खुले PO की सूची में जुड़ गया।',
+      manualDuplicate: 'यह PO नंबर पहले से मौजूद है।', manualFileTooLarge: 'PO कॉपी 10 MB या उससे छोटी होनी चाहिए।',
+      manualFileType: 'PO कॉपी PDF, JPG या PNG फाइल होनी चाहिए।', couldNotSavePo: 'PO सहेजा नहीं जा सका।'
     }
   };
   const LOCALES = { en: 'en-IN', gu: 'gu-IN', hi: 'hi-IN' };
@@ -249,6 +276,82 @@
     const path = `trip-delivery-slips/${tripId}/${poId}/${Date.now()}-${fileName}`;
     await api(`/storage/v1/object/${NOTE_BUCKET}/${path}`, { method: 'POST', headers: { 'Content-Type': file.type || 'application/octet-stream', 'x-upsert': 'true' }, body: file });
     return path;
+  }
+  async function uploadManualPoCopy(poId, file) {
+    if (!file) return '';
+    if (file.size > 10 * 1024 * 1024) throw new Error(t('manualFileTooLarge'));
+    const allowedTypes = ['application/pdf', 'image/jpeg', 'image/png'];
+    const allowedExtension = /\.(pdf|jpe?g|png)$/i.test(file.name);
+    if (!allowedTypes.includes(file.type) && !allowedExtension) throw new Error(t('manualFileType'));
+    const fileName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+    const path = `manual-po-copies/${poId}/${Date.now()}-${fileName}`;
+    await api(`/storage/v1/object/${NOTE_BUCKET}/${path}`, { method: 'POST', headers: { 'Content-Type': file.type || 'application/octet-stream', 'x-upsert': 'true' }, body: file });
+    return path;
+  }
+
+  function closeManualPoDialog() {
+    if ($('manualPoDialog').open) $('manualPoDialog').close();
+    $('manualPoForm').reset();
+    $('manualPoError').textContent = '';
+  }
+  function openManualPoDialog() {
+    $('manualPoForm').reset();
+    $('manualPoDate').value = today();
+    $('manualReceivedDate').value = today();
+    $('manualAssignedTo').value = session?.user?.email || '';
+    $('manualPoError').textContent = '';
+    $('manualPoDialog').showModal();
+    window.setTimeout(() => $('manualCustomer').focus(), 0);
+  }
+  async function saveManualPo(event) {
+    event.preventDefault();
+    const error = $('manualPoError');
+    const button = $('saveManualPoBtn');
+    error.textContent = '';
+    const poNumber = $('manualPoNumber').value.trim();
+    const poId = crypto.randomUUID();
+    try {
+      button.disabled = true;
+      button.textContent = t('savingPo');
+      const duplicate = await api(`/rest/v1/purchase_orders?po_number=eq.${encodeURIComponent(poNumber)}&select=id&limit=1`);
+      if (Array.isArray(duplicate) && duplicate.length) throw new Error(t('manualDuplicate'));
+      const poCopyPath = await uploadManualPoCopy(poId, $('manualPoFile').files?.[0]);
+      const now = new Date().toISOString();
+      const payload = {
+        id: poId,
+        customer_name: $('manualCustomer').value.trim(),
+        po_number: poNumber,
+        po_date: $('manualPoDate').value,
+        po_received_date: $('manualReceivedDate').value,
+        delivery_date: $('manualDeliveryDate').value || null,
+        delivery_location: $('manualLocation').value.trim(),
+        po_value: Number($('manualPoValue').value || 0),
+        assigned_to: $('manualAssignedTo').value.trim() || null,
+        remarks: $('manualRemarks').value.trim() || null,
+        po_attachment_url: poCopyPath || null,
+        status: 'Received',
+        created_by: session?.user?.id,
+        entry_source: 'Manual',
+        review_status: 'Draft',
+        updated_at: now
+      };
+      await api('/rest/v1/purchase_orders', { method: 'POST', headers: { 'Content-Type': 'application/json', Prefer: 'return=minimal' }, body: JSON.stringify(payload) });
+      try {
+        await api(`/rest/v1/purchase_orders?id=eq.${encodeURIComponent(poId)}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+          body: JSON.stringify({ review_status: 'Submitted', submitted_at: now, updated_at: now })
+        });
+      } catch (_) { /* Draft PO remains usable if review submission is unavailable. */ }
+      closeManualPoDialog();
+      await loadData();
+      toast(t('manualPoSaved'));
+    } catch (err) {
+      error.textContent = err.message || t('couldNotSavePo');
+    } finally {
+      button.disabled = false;
+      button.textContent = t('savePo');
+    }
   }
 
   function normalizePoNumber(value) { return String(value || '').replace(/\D/g, ''); }
@@ -579,6 +682,10 @@
     ['languageSelect', 'loginLanguageSelect'].forEach(id => $(id).addEventListener('change', event => applyLanguage(event.target.value)));
     $('loginForm').addEventListener('submit', async event => { event.preventDefault(); $('loginError').textContent = ''; try { await signIn($('emailInput').value.trim(), $('passwordInput').value); await start(); } catch (error) { $('loginError').textContent = error.message || t('signInFailed'); } });
     $('signOutBtn').addEventListener('click', signOut); $('refreshBtn').addEventListener('click', loadData); $('clearFilters').addEventListener('click', clearFilters); $('tripPlanForm').addEventListener('submit', saveTrip);
+    $('openManualPoBtn').addEventListener('click', openManualPoDialog);
+    $('manualPoForm').addEventListener('submit', saveManualPo);
+    $('closeManualPoBtn').addEventListener('click', closeManualPoDialog);
+    $('cancelManualPoBtn').addEventListener('click', closeManualPoDialog);
     $('openTripDialogBtn').addEventListener('click', openCreateTrip);
     $('closeTripDialogBtn').addEventListener('click', closeTripDialog); $('cancelTripBtn').addEventListener('click', closeTripDialog);
     $('tripPoDetails').addEventListener('change', event => { if (event.target.matches('.po-invoice-file')) handleInvoiceFile(event.target); });
